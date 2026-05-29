@@ -59,6 +59,12 @@ interface ApiOrderResponse {
   error?: string;
 }
 
+interface ApiOrdersResponse {
+  ok: boolean;
+  orders?: ApiOrder[];
+  error?: string;
+}
+
 export async function createDatabaseOrder(payload: CreateOrderPayload): Promise<ApiOrder> {
   const response = await fetch("/api/orders", {
     method: "POST",
@@ -86,6 +92,58 @@ export async function getPublicOrder(reference: string): Promise<ApiOrder> {
 
   if (!response.ok || !data?.ok || !data.order) {
     throw new Error(data?.error || "Order not found");
+  }
+
+  return data.order;
+}
+
+export async function getAdminOrders(): Promise<ApiOrder[]> {
+  const response = await fetch("/api/admin/orders", {
+    method: "GET",
+    credentials: "include",
+  });
+
+  const data = await response.json().catch(() => null) as ApiOrdersResponse | null;
+
+  if (!response.ok || !data?.ok || !data.orders) {
+    throw new Error(data?.error || "Could not load orders");
+  }
+
+  return data.orders;
+}
+
+export async function getAdminOrder(reference: string): Promise<ApiOrder> {
+  const response = await fetch(`/api/admin/orders/${encodeURIComponent(reference)}`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  const data = await response.json().catch(() => null) as ApiOrderResponse | null;
+
+  if (!response.ok || !data?.ok || !data.order) {
+    throw new Error(data?.error || "Order not found");
+  }
+
+  return data.order;
+}
+
+export async function updateAdminOrderStatus(
+  reference: string,
+  status: OrderStatus
+): Promise<ApiOrder> {
+  const response = await fetch(`/api/admin/orders/${encodeURIComponent(reference)}/status`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify({ status }),
+  });
+
+  const data = await response.json().catch(() => null) as ApiOrderResponse | null;
+
+  if (!response.ok || !data?.ok || !data.order) {
+    throw new Error(data?.error || "Could not update order status");
   }
 
   return data.order;

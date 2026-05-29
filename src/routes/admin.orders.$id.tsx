@@ -2,22 +2,59 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { EmptyState } from "@/components/ui-kit/EmptyState";
-import { findLocalOrder, type LocalOrder } from "@/lib/order-storage";
+import {
+  getAdminOrder,
+  updateAdminOrderStatus,
+  type ApiOrder,
+} from "@/lib/orders-api";
 import { formatDate, formatPrice } from "@/lib/format";
 import { ArrowLeft, ShoppingBag } from "lucide-react";
+import type { OrderStatus } from "@/types";
 
 export const Route = createFileRoute("/admin/orders/$id")({
-  head: () => ({ meta: [{ title: "Order details — Admin" }] }),
+  head: () => ({ meta: [{ title: "Order details - Admin" }] }),
   component: AdminOrderDetailPage,
 });
 
+const statuses: OrderStatus[] = [
+  "pending",
+  "confirmed",
+  "preparing",
+  "completed",
+  "cancelled",
+];
+
 function AdminOrderDetailPage() {
   const { id } = Route.useParams();
-  const [order, setOrder] = useState<LocalOrder | null | undefined>(undefined);
+  const [order, setOrder] = useState<ApiOrder | null | undefined>(undefined);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   useEffect(() => {
-    setOrder(findLocalOrder(id));
+    getAdminOrder(id)
+      .then(setOrder)
+      .catch(() => setOrder(null));
   }, [id]);
+
+  const handleStatusChange = async (status: OrderStatus) => {
+    if (!order) return;
+
+    setIsUpdatingStatus(true);
+    setStatusError(null);
+
+    try {
+      const updatedOrder = await updateAdminOrderStatus(order.reference, status);
+      setOrder({
+        ...order,
+        status: updatedOrder.status,
+        updatedAt: updatedOrder.updatedAt,
+      });
+    } catch {
+      setStatusError("Could not update order status.");
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
 
   if (order === undefined) {
     return (
@@ -34,7 +71,7 @@ function AdminOrderDetailPage() {
         <EmptyState
           icon={<ShoppingBag className="h-5 w-5" />}
           title="Order not found"
-          description="This local order does not exist in this browser storage."
+          description="This database order does not exist."
         />
       </AdminLayout>
     );
@@ -47,7 +84,28 @@ function AdminOrderDetailPage() {
       <div className="grid lg:grid-cols-2 gap-6">
         <Card title="Order overview">
           <InfoRow label="Reference" value={order.reference} />
-          <InfoRow label="Status" value={order.status} />
+          <InfoRow
+            label="Status"
+            value={
+              <div className="space-y-2">
+                <select
+                  value={order.status}
+                  disabled={isUpdatingStatus}
+                  onChange={(event) => handleStatusChange(event.target.value as OrderStatus)}
+                  className="rounded-lg border border-input bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  {statuses.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+                {statusError ? (
+                  <p className="text-xs text-destructive">{statusError}</p>
+                ) : null}
+              </div>
+            }
+          />
           <InfoRow label="Date" value={formatDate(order.createdAt)} />
           <InfoRow label="Total" value={formatPrice(order.totalCents)} />
         </Card>
@@ -55,20 +113,20 @@ function AdminOrderDetailPage() {
         <Card title="Customer information">
           <InfoRow
             label="Customer"
-            value={`${order.customer.firstName} ${order.customer.lastName}`.trim() || "—"}
+            value={`${order.customer.firstName} ${order.customer.lastName}`.trim() || "-"}
           />
-          <InfoRow label="Email" value={order.customer.email || "—"} />
-          <InfoRow label="Phone" value={order.customer.phone || "—"} />
-          <InfoRow label="Address" value={order.customer.address || "—"} />
+          <InfoRow label="Email" value={order.customer.email || "-"} />
+          <InfoRow label="Phone" value={order.customer.phone || "-"} />
+          <InfoRow label="Address" value={order.customer.address || "-"} />
           <InfoRow label="Delivery method" value={order.customer.deliveryMethod} />
         </Card>
 
         <Card title="Bucket composition">
-          {order.items.length === 0 ? (
+          {(order.items ?? []).length === 0 ? (
             <p className="text-sm text-muted-foreground">No items found for this order.</p>
           ) : (
             <div className="space-y-3">
-              {order.items.map((item) => (
+              {(order.items ?? []).map((item) => (
                 <div
                   key={item.id}
                   className="flex items-start justify-between gap-4 border border-border/60 rounded-xl px-4 py-3"
@@ -76,6 +134,9 @@ function AdminOrderDetailPage() {
                   <div>
                     <p className="font-medium">{item.productName}</p>
                     <p className="text-sm text-muted-foreground">Quantity: {item.quantity}</p>
+                    {item.colorName ? (
+                      <p className="text-xs text-muted-foreground">Color: {item.colorName}</p>
+                    ) : null}
                   </div>
                   <p className="text-sm font-medium">
                     {formatPrice(item.unitPriceCents * item.quantity)}
@@ -87,10 +148,10 @@ function AdminOrderDetailPage() {
         </Card>
 
         <Card title="Name & message">
-          <InfoRow label="Personalized name" value={order.configuration.firstName || "—"} />
-          <InfoRow label="Message" value={order.configuration.message || "—"} />
-          <InfoRow label="Bucket ID" value={order.configuration.bucketId || "—"} />
-          <InfoRow label="Color ID" value={order.configuration.colorId || "—"} />
+          <InfoRow label="Personalized name" value={order.customName || "-"} />
+          <InfoRow label="Message" value={order.customMessage || "-"} />
+          <InfoRow label="Internal notes" value={order.internalNotes || "-"} />
+          <InfoRow label="Updated at" value={formatDate(order.updatedAt)} />
         </Card>
       </div>
     </AdminLayout>

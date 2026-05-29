@@ -2,13 +2,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { EmptyState } from "@/components/ui-kit/EmptyState";
-import { loadOrders, type LocalOrder } from "@/lib/order-storage";
+import { getAdminOrders, type ApiOrder } from "@/lib/orders-api";
 import { formatDate, formatPrice } from "@/lib/format";
 import { ShoppingBag } from "lucide-react";
 import type { OrderStatus } from "@/types";
 
 export const Route = createFileRoute("/admin/orders/")({
-  head: () => ({ meta: [{ title: "Orders — Admin" }] }),
+  head: () => ({ meta: [{ title: "Orders - Admin" }] }),
   component: AdminOrdersPage,
 });
 
@@ -23,10 +23,22 @@ const filters: { value: OrderStatus | "all"; label: string }[] = [
 
 function AdminOrdersPage() {
   const [active, setActive] = useState<OrderStatus | "all">("all");
-  const [orders, setOrders] = useState<LocalOrder[]>([]);
+  const [orders, setOrders] = useState<ApiOrder[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    setOrders(loadOrders());
+    getAdminOrders()
+      .then((loadedOrders) => {
+        setOrders(loadedOrders);
+        setLoadError(null);
+      })
+      .catch(() => {
+        setLoadError("Could not load database orders.");
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
 
   const filteredOrders = useMemo(() => {
@@ -52,14 +64,22 @@ function AdminOrdersPage() {
         ))}
       </div>
 
-      {filteredOrders.length === 0 ? (
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading database orders...</p>
+      ) : loadError ? (
+        <EmptyState
+          icon={<ShoppingBag className="h-5 w-5" />}
+          title="Could not load orders"
+          description={loadError}
+        />
+      ) : filteredOrders.length === 0 ? (
         <EmptyState
           icon={<ShoppingBag className="h-5 w-5" />}
           title={orders.length === 0 ? "No orders yet" : "No orders for this status"}
           description={
             orders.length === 0
-              ? "Local customer orders will appear here after checkout."
-              : "Try another filter to see more local orders."
+              ? "Database customer orders will appear here after checkout."
+              : "Try another filter to see more database orders."
           }
         />
       ) : (
