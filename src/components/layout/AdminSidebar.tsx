@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+﻿import { Link, useRouterState } from "@tanstack/react-router";
 import { LayoutDashboard, ShoppingBag, Package, Settings, Flower2 } from "lucide-react";
 
 const items: Array<{
@@ -8,9 +8,9 @@ const items: Array<{
   exact?: boolean;
 }> = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/admin/orders", label: "Commandes", icon: ShoppingBag },
-  { to: "/admin/products", label: "Produits", icon: Package },
-  { to: "/admin/settings", label: "Paramètres", icon: Settings },
+  { to: "/admin/orders", label: "Orders", icon: ShoppingBag },
+  { to: "/admin/products", label: "Products", icon: Package },
+  { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 export function AdminSidebar() {
@@ -44,8 +44,9 @@ export function AdminSidebar() {
         })}
       </nav>
       <div className="p-4 text-xs text-muted-foreground border-t border-border/60">
-        TODO: connecter auth réelle
+        TODO: connect real auth
       </div>
     </aside>
   );
 }
+

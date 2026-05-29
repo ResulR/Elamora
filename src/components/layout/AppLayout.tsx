@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+﻿import type { ReactNode } from "react";
 import { PublicHeader } from "./PublicHeader";
 
 export function AppLayout({ children }: { children: ReactNode }) {
@@ -7,7 +7,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <PublicHeader />
       <main className="flex-1">{children}</main>
       <footer className="border-t border-border/60 py-6 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} Maison Bucket — Tous droits réservés
+        (c) {new Date().getFullYear()} Elamora - All rights reserved
       </footer>
     </div>
   );
