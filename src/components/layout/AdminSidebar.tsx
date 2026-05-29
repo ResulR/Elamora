@@ -1,0 +1,51 @@
+import { Link, useRouterState } from "@tanstack/react-router";
+import { LayoutDashboard, ShoppingBag, Package, Settings, Flower2 } from "lucide-react";
+
+const items: Array<{
+  to: "/admin" | "/admin/orders" | "/admin/products" | "/admin/settings";
+  label: string;
+  icon: typeof LayoutDashboard;
+  exact?: boolean;
+}> = [
+  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { to: "/admin/orders", label: "Commandes", icon: ShoppingBag },
+  { to: "/admin/products", label: "Produits", icon: Package },
+  { to: "/admin/settings", label: "Paramètres", icon: Settings },
+];
+
+export function AdminSidebar() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  return (
+    <aside className="w-60 shrink-0 border-r border-border/60 bg-surface/60 backdrop-blur-sm hidden md:flex md:flex-col">
+      <div className="h-16 flex items-center gap-2 px-5 border-b border-border/60">
+        <span className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+          <Flower2 className="h-4 w-4" />
+        </span>
+        <span className="font-display text-base">Admin</span>
+      </div>
+      <nav className="flex-1 p-3 space-y-1">
+        {items.map(({ to, label, icon: Icon, exact }) => {
+          const active = exact ? pathname === to : pathname.startsWith(to);
+          return (
+            <Link
+              key={to}
+              to={to}
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                active
+                  ? "bg-primary text-primary-foreground shadow-soft"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="p-4 text-xs text-muted-foreground border-t border-border/60">
+        TODO: connecter auth réelle
+      </div>
+    </aside>
+  );
+}
