@@ -62,7 +62,7 @@ export function createLocalOrder(
   );
 
   const order: LocalOrder = {
-    id: crypto.randomUUID(),
+    id: createLocalId(),
     reference,
     status: "pending",
     customer,
@@ -102,7 +102,7 @@ function buildOrderItems(config: BucketConfiguration): LocalOrderItem[] {
       if (!product) return null;
 
       return {
-        id: crypto.randomUUID(),
+        id: createLocalId(),
         productId: product.id,
         productName: product.name,
         unitPriceCents: product.price,
@@ -114,4 +114,16 @@ function buildOrderItems(config: BucketConfiguration): LocalOrderItem[] {
 
 function generateOrderReference(nextNumber: number): string {
   return `ELA-${String(nextNumber).padStart(6, "0")}`;
+}
+
+
+function createLocalId(): string {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
+  }
+
+  return `local-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
