@@ -1,8 +1,9 @@
-﻿import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+﻿import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { SectionTitle } from "@/components/ui-kit/SectionTitle";
 import { loadConfiguration } from "@/lib/configuration-storage";
+import { createLocalOrder } from "@/lib/order-storage";
 import { findProduct } from "@/data/catalog";
 import { formatPrice } from "@/lib/format";
 import type { BucketConfiguration } from "@/types";
@@ -18,7 +19,9 @@ export const Route = createFileRoute("/checkout")({
 });
 
 function CheckoutPage() {
+  const navigate = useNavigate();
   const [config, setConfig] = useState<BucketConfiguration | null>(null);
+  const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "delivery">("pickup");
 
   useEffect(() => {
     setConfig(loadConfiguration());
@@ -62,6 +65,24 @@ function CheckoutPage() {
 
   const hasConfiguration = !!config && !!summary.bucket;
 
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!config || !summary.bucket) return;
+
+    const form = new FormData(event.currentTarget);
+
+    createLocalOrder(config, {
+      firstName: String(form.get("firstName") ?? "").trim(),
+      lastName: String(form.get("lastName") ?? "").trim(),
+      email: String(form.get("email") ?? "").trim(),
+      phone: String(form.get("phone") ?? "").trim(),
+      address: String(form.get("address") ?? "").trim(),
+      deliveryMethod,
+    });
+
+    navigate({ to: "/confirmation" });
+  };
+
   return (
     <AppLayout>
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
@@ -86,31 +107,43 @@ function CheckoutPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid lg:grid-cols-3 gap-8">
+          <form onSubmit={handleSubmit} className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
               <section className="bg-surface/80 border border-border/60 rounded-2xl p-6 shadow-soft">
                 <h2 className="font-display text-xl mb-4">Your details</h2>
-                <form className="grid sm:grid-cols-2 gap-4">
-                  <Field label="First name" placeholder="Camille" />
-                  <Field label="Last name optional" placeholder="Martin" />
-                  <Field label="Email" type="email" placeholder="you@example.com" />
-                  <Field label="Phone" type="tel" placeholder="+32 470 00 00 00" />
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <Field name="firstName" label="First name" placeholder="Camille" required />
+                  <Field name="lastName" label="Last name optional" placeholder="Martin" />
+                  <Field name="email" label="Email" type="email" placeholder="you@example.com" required />
+                  <Field name="phone" label="Phone" type="tel" placeholder="+32 470 00 00 00" />
                   <div className="sm:col-span-2">
-                    <Field label="Address optional" placeholder="Street, city, postal code" />
+                    <Field name="address" label="Address optional" placeholder="Street, city, postal code" />
                   </div>
-                </form>
+                </div>
               </section>
 
               <section className="bg-surface/80 border border-border/60 rounded-2xl p-6 shadow-soft">
                 <h2 className="font-display text-xl mb-4">Delivery</h2>
                 <div className="grid sm:grid-cols-2 gap-3">
                   <label className="border border-border rounded-xl p-4 cursor-pointer hover:border-primary transition-colors">
-                    <input type="radio" name="delivery" className="mr-2" defaultChecked />
+                    <input
+                      type="radio"
+                      name="delivery"
+                      className="mr-2"
+                      checked={deliveryMethod === "pickup"}
+                      onChange={() => setDeliveryMethod("pickup")}
+                    />
                     <span className="font-medium">Store pickup</span>
                     <p className="text-xs text-muted-foreground mt-1">Free — TODO: time slots</p>
                   </label>
                   <label className="border border-border rounded-xl p-4 cursor-pointer hover:border-primary transition-colors">
-                    <input type="radio" name="delivery" className="mr-2" />
+                    <input
+                      type="radio"
+                      name="delivery"
+                      className="mr-2"
+                      checked={deliveryMethod === "delivery"}
+                      onChange={() => setDeliveryMethod("delivery")}
+                    />
                     <span className="font-medium">Delivery</span>
                     <p className="text-xs text-muted-foreground mt-1">TODO: pricing & zones</p>
                   </label>
@@ -145,31 +178,48 @@ function CheckoutPage() {
               </div>
 
               <button
-                disabled
-                title="TODO: connect backend order creation and payment"
-                className="mt-6 w-full px-4 py-3 rounded-full bg-muted text-muted-foreground cursor-not-allowed text-sm font-medium"
+                type="submit"
+                className="mt-6 w-full px-4 py-3 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity shadow-soft"
               >
-                Place order (TODO)
+                Place order
               </button>
 
               <Link to="/" className="block mt-3 text-center text-xs text-muted-foreground hover:text-foreground">
                 ← Edit configuration
               </Link>
+
+              <p className="mt-4 text-xs text-muted-foreground text-center italic">
+                Temporary local order. Backend connection comes later.
+              </p>
             </aside>
-          </div>
+          </form>
         )}
       </div>
     </AppLayout>
   );
 }
 
-function Field({ label, type = "text", placeholder }: { label: string; type?: string; placeholder?: string }) {
+function Field({
+  name,
+  label,
+  type = "text",
+  placeholder,
+  required = false,
+}: {
+  name: string;
+  label: string;
+  type?: string;
+  placeholder?: string;
+  required?: boolean;
+}) {
   return (
     <div>
       <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</label>
       <input
+        name={name}
         type={type}
         placeholder={placeholder}
+        required={required}
         className="mt-1 w-full rounded-lg border border-input bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
       />
     </div>
