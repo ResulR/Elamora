@@ -1,7 +1,8 @@
-import { Link } from "@tanstack/react-router";
+﻿import { Link } from "@tanstack/react-router";
 import { useConfigurator } from "@/lib/configurator-context";
 import { findProduct } from "@/data/catalog";
 import { formatPrice } from "@/lib/format";
+import { saveConfiguration } from "@/lib/configuration-storage";
 
 export function OrderSummary() {
   const { config, totalPrice } = useConfigurator();
@@ -20,10 +21,10 @@ export function OrderSummary() {
 
   return (
     <div className="bg-surface/80 border border-border/60 rounded-2xl p-5 shadow-soft sticky top-20">
-      <h3 className="font-display text-lg mb-3">Récapitulatif</h3>
+      <h3 className="font-display text-lg mb-3">Order summary</h3>
       {lines.length === 0 ? (
         <p className="text-sm text-muted-foreground py-4">
-          Votre composition apparaîtra ici.
+          Your composition will appear here.
         </p>
       ) : (
         <ul className="space-y-1.5 mb-4">
@@ -41,13 +42,16 @@ export function OrderSummary() {
       </div>
       <Link
         to="/checkout"
+        onClick={() => {
+          if (bucket) saveConfiguration(config);
+        }}
         className={`mt-4 block text-center px-4 py-3 rounded-full font-medium transition-all ${
           bucket
             ? "bg-primary text-primary-foreground hover:opacity-90 shadow-soft"
             : "bg-muted text-muted-foreground pointer-events-none"
         }`}
       >
-        Continuer
+        Continue
       </Link>
     </div>
   );

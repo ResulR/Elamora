@@ -1,4 +1,4 @@
-import { BucketSelector } from "./BucketSelector";
+﻿import { BucketSelector } from "./BucketSelector";
 import { FlowerSelector } from "./FlowerSelector";
 import { BalloonSelector } from "./BalloonSelector";
 import { ColorSelector } from "./ColorSelector";
@@ -12,11 +12,11 @@ interface Step {
 }
 
 const steps: Step[] = [
-  { index: 1, title: "Choisissez votre bucket", description: "La base de votre composition.", body: <BucketSelector /> },
-  { index: 2, title: "Ajoutez des fleurs", description: "Composez le bouquet.", body: <FlowerSelector /> },
-  { index: 3, title: "Ajoutez des ballons", description: "Pour une touche festive.", body: <BalloonSelector /> },
-  { index: 4, title: "Sélectionnez une couleur", description: "Harmonisez l'ensemble.", body: <ColorSelector /> },
-  { index: 5, title: "Personnalisation", description: "Prénom & message.", body: <PersonalizationFields /> },
+  { index: 1, title: "Choose your bucket", description: "The base of your composition.", body: <BucketSelector /> },
+  { index: 2, title: "Add flowers", description: "Build your bouquet.", body: <FlowerSelector /> },
+  { index: 3, title: "Add balloons", description: "Add a festive touch.", body: <BalloonSelector /> },
+  { index: 4, title: "Choose a color", description: "Create a harmonious look.", body: <ColorSelector /> },
+  { index: 5, title: "Personalization", description: "Name & message.", body: <PersonalizationFields /> },
 ];
 
 export function ConfiguratorPanel() {
