@@ -201,6 +201,42 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
   }
 });
 
+
+app.get("/api/orders/:reference", async (req: Request, res: Response) => {
+  const orderResult = await pool.query(
+    `
+      SELECT *
+      FROM orders
+      WHERE reference = $1
+      LIMIT 1
+    `,
+    [req.params.reference]
+  );
+
+  const order = orderResult.rows[0];
+
+  if (!order) {
+    return res.status(404).json({ ok: false, error: "Order not found" });
+  }
+
+  const itemsResult = await pool.query(
+    `
+      SELECT *
+      FROM order_items
+      WHERE order_id = $1
+      ORDER BY created_at ASC
+    `,
+    [order.id]
+  );
+
+  return res.json({
+    ok: true,
+    order: {
+      ...mapOrderRow(order),
+      items: itemsResult.rows.map(mapOrderItemRow),
+    },
+  });
+});
 app.post("/api/admin/login", loginLimiter, async (req: Request, res: Response) => {
   const parsed = loginSchema.safeParse(req.body);
 
@@ -407,3 +443,4 @@ function mapOrderItemRow(row: any) {
     createdAt: row.created_at,
   };
 }
+

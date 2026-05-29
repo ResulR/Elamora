@@ -1,9 +1,9 @@
-﻿import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+﻿import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { SectionTitle } from "@/components/ui-kit/SectionTitle";
 import { loadConfiguration } from "@/lib/configuration-storage";
-import { createLocalOrder } from "@/lib/order-storage";
+import { createDatabaseOrder } from "@/lib/orders-api";
 import { findProduct } from "@/data/catalog";
 import { formatPrice } from "@/lib/format";
 import type { BucketConfiguration } from "@/types";
@@ -11,7 +11,7 @@ import type { BucketConfiguration } from "@/types";
 export const Route = createFileRoute("/checkout")({
   head: () => ({
     meta: [
-      { title: "Complete your order — Elamora" },
+      { title: "Complete your order - Elamora" },
       { name: "description", content: "Review your personalized gift bucket and add your delivery details." },
     ],
   }),
@@ -19,9 +19,10 @@ export const Route = createFileRoute("/checkout")({
 });
 
 function CheckoutPage() {
-  const navigate = useNavigate();
   const [config, setConfig] = useState<BucketConfiguration | null>(null);
   const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "delivery">("pickup");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     setConfig(loadConfiguration());
@@ -65,22 +66,41 @@ function CheckoutPage() {
 
   const hasConfiguration = !!config && !!summary.bucket;
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!config || !summary.bucket) return;
+    if (!config || !summary.bucket || summary.lines.length === 0) return;
 
     const form = new FormData(event.currentTarget);
 
-    createLocalOrder(config, {
-      firstName: String(form.get("firstName") ?? "").trim(),
-      lastName: String(form.get("lastName") ?? "").trim(),
-      email: String(form.get("email") ?? "").trim(),
-      phone: String(form.get("phone") ?? "").trim(),
-      address: String(form.get("address") ?? "").trim(),
-      deliveryMethod,
-    });
+    setIsSubmitting(true);
+    setSubmitError(null);
 
-    navigate({ to: "/confirmation" });
+    try {
+      const order = await createDatabaseOrder({
+        customer: {
+          firstName: String(form.get("firstName") ?? "").trim(),
+          lastName: String(form.get("lastName") ?? "").trim(),
+          email: String(form.get("email") ?? "").trim(),
+          phone: String(form.get("phone") ?? "").trim(),
+          address: String(form.get("address") ?? "").trim(),
+          deliveryMethod,
+        },
+        customName: config.firstName,
+        customMessage: config.message,
+        items: summary.lines.map((line) => ({
+          productName: line.label,
+          unitPriceCents: line.price,
+          quantity: 1,
+          colorName: summary.color?.name ?? "",
+          colorHex: summary.color?.colorHex ?? "",
+        })),
+      });
+
+      window.location.href = `/confirmation?reference=${encodeURIComponent(order.reference)}`;
+    } catch {
+      setSubmitError("Could not place your order. Please try again.");
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -134,7 +154,7 @@ function CheckoutPage() {
                       onChange={() => setDeliveryMethod("pickup")}
                     />
                     <span className="font-medium">Store pickup</span>
-                    <p className="text-xs text-muted-foreground mt-1">Free — TODO: time slots</p>
+                    <p className="text-xs text-muted-foreground mt-1">Free - TODO: time slots</p>
                   </label>
                   <label className="border border-border rounded-xl p-4 cursor-pointer hover:border-primary transition-colors">
                     <input
@@ -145,7 +165,7 @@ function CheckoutPage() {
                       onChange={() => setDeliveryMethod("delivery")}
                     />
                     <span className="font-medium">Delivery</span>
-                    <p className="text-xs text-muted-foreground mt-1">TODO: pricing & zones</p>
+                    <p className="text-xs text-muted-foreground mt-1">TODO: pricing and zones</p>
                   </label>
                 </div>
               </section>
@@ -177,19 +197,26 @@ function CheckoutPage() {
                 <span className="text-primary">{formatPrice(summary.totalPrice)}</span>
               </div>
 
+              {submitError ? (
+                <p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  {submitError}
+                </p>
+              ) : null}
+
               <button
                 type="submit"
-                className="mt-6 w-full px-4 py-3 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity shadow-soft"
+                disabled={isSubmitting}
+                className="mt-6 w-full px-4 py-3 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity shadow-soft disabled:opacity-60"
               >
-                Place order
+                {isSubmitting ? "Placing order..." : "Place order"}
               </button>
 
               <Link to="/" className="block mt-3 text-center text-xs text-muted-foreground hover:text-foreground">
-                ← Edit configuration
+                Edit configuration
               </Link>
 
               <p className="mt-4 text-xs text-muted-foreground text-center italic">
-                Temporary local order. Backend connection comes later.
+                Your order will be saved in the database.
               </p>
             </aside>
           </form>

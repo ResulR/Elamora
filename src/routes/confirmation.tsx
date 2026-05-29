@@ -2,13 +2,13 @@
 import { useEffect, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Check } from "lucide-react";
-import { loadLatestOrder, type LocalOrder } from "@/lib/order-storage";
+import { getPublicOrder, type ApiOrder } from "@/lib/orders-api";
 import { formatDate, formatPrice } from "@/lib/format";
 
 export const Route = createFileRoute("/confirmation")({
   head: () => ({
     meta: [
-      { title: "Order confirmed — Elamora" },
+      { title: "Order confirmed - Elamora" },
       { name: "description", content: "Your order has been received." },
     ],
   }),
@@ -16,11 +16,32 @@ export const Route = createFileRoute("/confirmation")({
 });
 
 function ConfirmationPage() {
-  const [order, setOrder] = useState<LocalOrder | null>(null);
+  const [order, setOrder] = useState<ApiOrder | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setOrder(loadLatestOrder());
+    const reference = new URLSearchParams(window.location.search).get("reference");
+
+    if (!reference) {
+      setIsLoading(false);
+      return;
+    }
+
+    getPublicOrder(reference)
+      .then(setOrder)
+      .catch(() => setOrder(null))
+      .finally(() => setIsLoading(false));
   }, []);
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="max-w-xl mx-auto px-4 sm:px-6 py-20 text-center">
+          <p className="text-muted-foreground">Loading order confirmation...</p>
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (!order) {
     return (
@@ -50,8 +71,7 @@ function ConfirmationPage() {
 
         <h1 className="font-display text-4xl mt-6">Thank you for your order</h1>
         <p className="mt-3 text-muted-foreground">
-          Your personalized gift bucket has been saved locally for now.
-          Backend order processing will be connected later.
+          Your personalized gift bucket has been received. We will contact you soon.
         </p>
 
         <div className="mt-8 bg-surface/80 border border-border/60 rounded-2xl p-6 shadow-soft text-left">
@@ -65,10 +85,10 @@ function ConfirmationPage() {
           <div className="mt-6 border-t border-border pt-4">
             <h2 className="font-display text-lg mb-3">Composition</h2>
             <ul className="space-y-2">
-              {order.items.map((item) => (
+              {(order.items ?? []).map((item) => (
                 <li key={item.id} className="flex justify-between text-sm">
                   <span className="text-muted-foreground">
-                    {item.productName} × {item.quantity}
+                    {item.productName} x {item.quantity}
                   </span>
                   <span>{formatPrice(item.unitPriceCents * item.quantity)}</span>
                 </li>
@@ -76,19 +96,19 @@ function ConfirmationPage() {
             </ul>
           </div>
 
-          {(order.configuration.firstName || order.configuration.message) && (
+          {(order.customName || order.customMessage) && (
             <div className="mt-6 border-t border-border pt-4">
               <h2 className="font-display text-lg mb-3">Personalization</h2>
-              {order.configuration.firstName && (
+              {order.customName && (
                 <p className="text-sm">
                   <span className="text-muted-foreground">Name:</span>{" "}
-                  {order.configuration.firstName}
+                  {order.customName}
                 </p>
               )}
-              {order.configuration.message && (
+              {order.customMessage && (
                 <p className="text-sm mt-1">
                   <span className="text-muted-foreground">Message:</span>{" "}
-                  {order.configuration.message}
+                  {order.customMessage}
                 </p>
               )}
             </div>
