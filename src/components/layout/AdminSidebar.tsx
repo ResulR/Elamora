@@ -1,5 +1,6 @@
-﻿import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, ShoppingBag, Package, Settings, Flower2 } from "lucide-react";
+﻿import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { LayoutDashboard, ShoppingBag, Package, Settings, Flower2, LogOut } from "lucide-react";
+import { logoutAdmin } from "@/lib/admin-auth";
 
 const items: Array<{
   to: "/admin" | "/admin/orders" | "/admin/products" | "/admin/settings";
@@ -13,8 +14,14 @@ const items: Array<{
   { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
-export function AdminSidebar() {
+export function AdminSidebar({ adminEmail }: { adminEmail: string }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logoutAdmin();
+    navigate({ to: "/login" });
+  };
 
   return (
     <aside className="w-60 shrink-0 border-r border-border/60 bg-surface/60 backdrop-blur-sm hidden md:flex md:flex-col">
@@ -43,10 +50,17 @@ export function AdminSidebar() {
           );
         })}
       </nav>
-      <div className="p-4 text-xs text-muted-foreground border-t border-border/60">
-        TODO: connect real auth
+      <div className="p-4 border-t border-border/60 space-y-3">
+        <p className="text-xs text-muted-foreground break-all">{adminEmail}</p>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        >
+          <LogOut className="h-4 w-4" />
+          Logout
+        </button>
       </div>
     </aside>
   );
 }
-
