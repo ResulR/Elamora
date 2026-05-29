@@ -116,7 +116,6 @@ function generateOrderReference(nextNumber: number): string {
   return `ELA-${String(nextNumber).padStart(6, "0")}`;
 }
 
-
 function createLocalId(): string {
   if (
     typeof crypto !== "undefined" &&
