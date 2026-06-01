@@ -1,4 +1,4 @@
-﻿import type { OrderStatus } from "@/types";
+import type { OrderStatus } from "@/types";
 
 export interface ApiOrderItem {
   id: string;
@@ -45,9 +45,11 @@ export interface CreateOrderPayload {
   customName: string;
   customMessage: string;
   items: Array<{
+    productId?: string | null;
     productName: string;
     unitPriceCents: number;
     quantity: number;
+    colorId?: string | null;
     colorName?: string;
     colorHex?: string;
   }>;

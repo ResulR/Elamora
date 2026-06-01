@@ -1,10 +1,10 @@
-﻿import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { SectionTitle } from "@/components/ui-kit/SectionTitle";
 import { loadConfiguration } from "@/lib/configuration-storage";
 import { createDatabaseOrder } from "@/lib/orders-api";
-import { findProduct } from "@/data/catalog";
+import { fetchCatalog, getFallbackCatalog, type CatalogData } from "@/lib/catalog-api";
 import { formatPrice } from "@/lib/format";
 import type { BucketConfiguration } from "@/types";
 
@@ -23,9 +23,34 @@ function CheckoutPage() {
   const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "delivery">("pickup");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [catalog, setCatalog] = useState<CatalogData>(() => getFallbackCatalog());
 
   useEffect(() => {
+    let cancelled = false;
+
     setConfig(loadConfiguration());
+
+    async function loadCatalog() {
+      try {
+        const liveCatalog = await fetchCatalog();
+
+        if (!cancelled) {
+          setCatalog(liveCatalog);
+        }
+      } catch (error) {
+        console.error(error);
+
+        if (!cancelled) {
+          setCatalog(getFallbackCatalog());
+        }
+      }
+    }
+
+    void loadCatalog();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const summary = useMemo(() => {
@@ -38,20 +63,43 @@ function CheckoutPage() {
       };
     }
 
-    const bucket = findProduct(config.bucketId);
-    const color = findProduct(config.colorId);
-    const lines: Array<{ label: string; price: number }> = [];
+    const findCatalogProduct = (id: string | null | undefined) => {
+      if (!id) return undefined;
+      return catalog.allProducts.find((product) => product.id === id);
+    };
 
-    if (bucket) lines.push({ label: bucket.name, price: bucket.price });
+    const bucket = findCatalogProduct(config.bucketId);
+    const color = findCatalogProduct(config.colorId);
+    const lines: Array<{ productId: string | null; label: string; price: number }> = [];
+
+    if (bucket) {
+      lines.push({
+        productId: bucket.dbId ?? null,
+        label: bucket.name,
+        price: bucket.price,
+      });
+    }
 
     config.flowerIds.forEach((id) => {
-      const product = findProduct(id);
-      if (product) lines.push({ label: product.name, price: product.price });
+      const product = findCatalogProduct(id);
+      if (product) {
+        lines.push({
+          productId: product.dbId ?? null,
+          label: product.name,
+          price: product.price,
+        });
+      }
     });
 
     config.balloonIds.forEach((id) => {
-      const product = findProduct(id);
-      if (product) lines.push({ label: product.name, price: product.price });
+      const product = findCatalogProduct(id);
+      if (product) {
+        lines.push({
+          productId: product.dbId ?? null,
+          label: product.name,
+          price: product.price,
+        });
+      }
     });
 
     const totalPrice = lines.reduce((sum, line) => sum + line.price, 0);
@@ -62,7 +110,7 @@ function CheckoutPage() {
       bucket,
       color,
     };
-  }, [config]);
+  }, [config, catalog.allProducts]);
 
   const hasConfiguration = !!config && !!summary.bucket;
 
@@ -88,9 +136,11 @@ function CheckoutPage() {
         customName: config.firstName,
         customMessage: config.message,
         items: summary.lines.map((line) => ({
+          productId: line.productId,
           productName: line.label,
           unitPriceCents: line.price,
           quantity: 1,
+          colorId: summary.color?.dbId ?? null,
           colorName: summary.color?.name ?? "",
           colorHex: summary.color?.colorHex ?? "",
         })),

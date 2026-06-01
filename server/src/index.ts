@@ -65,9 +65,11 @@ const createOrderSchema = z.object({
   items: z
     .array(
       z.object({
+        productId: z.string().uuid().nullable().optional().default(null),
         productName: z.string().trim().min(1).max(255),
         unitPriceCents: z.number().int().min(0).max(1_000_000),
         quantity: z.number().int().min(1).max(99).default(1),
+        colorId: z.string().uuid().nullable().optional().default(null),
         colorName: z.string().trim().max(120).optional().default(""),
         colorHex: z.string().trim().max(40).optional().default(""),
       })
@@ -168,10 +170,6 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
   }
 
   const payload = parsed.data;
-  const totalCents = payload.items.reduce(
-    (sum, item) => sum + item.unitPriceCents * item.quantity,
-    0
-  );
 
   const client = await pool.connect();
 
@@ -179,6 +177,85 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
     await client.query("BEGIN");
 
     const reference = await createOrderReference(client);
+    const validatedItems = [];
+
+    for (const item of payload.items) {
+      let productId = item.productId;
+      let productName = item.productName;
+      let unitPriceCents = item.unitPriceCents;
+      let colorId = item.colorId;
+      let colorName = item.colorName || null;
+      let colorHex = item.colorHex || null;
+
+      if (productId) {
+        const productResult = await client.query(
+          `
+            SELECT id, name, price_cents
+            FROM products
+            WHERE id = $1
+              AND is_active = true
+            LIMIT 1
+          `,
+          [productId]
+        );
+
+        const product = productResult.rows[0];
+
+        if (!product) {
+          await client.query("ROLLBACK");
+          return res.status(400).json({
+            ok: false,
+            error: "Invalid product",
+          });
+        }
+
+        productId = product.id;
+        productName = product.name;
+        unitPriceCents = product.price_cents;
+      }
+
+      if (colorId) {
+        const colorResult = await client.query(
+          `
+            SELECT id, name, hex_code
+            FROM product_colors
+            WHERE id = $1
+              AND is_active = true
+            LIMIT 1
+          `,
+          [colorId]
+        );
+
+        const color = colorResult.rows[0];
+
+        if (!color) {
+          await client.query("ROLLBACK");
+          return res.status(400).json({
+            ok: false,
+            error: "Invalid color",
+          });
+        }
+
+        colorId = color.id;
+        colorName = color.name;
+        colorHex = color.hex_code;
+      }
+
+      validatedItems.push({
+        productId,
+        productName,
+        unitPriceCents,
+        quantity: item.quantity,
+        colorId,
+        colorName,
+        colorHex,
+      });
+    }
+
+    const totalCents = validatedItems.reduce(
+      (sum, item) => sum + item.unitPriceCents * item.quantity,
+      0
+    );
 
     const orderResult = await client.query(
       `
@@ -214,7 +291,7 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
 
     const order = orderResult.rows[0];
 
-    for (const item of payload.items) {
+    for (const item of validatedItems) {
       await client.query(
         `
           INSERT INTO order_items (
@@ -227,15 +304,17 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
             color_name_snapshot,
             color_hex_snapshot
           )
-          VALUES ($1, NULL, $2, $3, $4, NULL, $5, $6)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         `,
         [
           order.id,
+          item.productId,
           item.productName,
           item.unitPriceCents,
           item.quantity,
-          item.colorName || null,
-          item.colorHex || null,
+          item.colorId,
+          item.colorName,
+          item.colorHex,
         ]
       );
     }
