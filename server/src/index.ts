@@ -446,6 +446,60 @@ app.post("/api/admin/logout", (_req: Request, res: Response) => {
   return res.json({ ok: true });
 });
 
+
+app.get("/api/admin/catalog", requireAdmin, async (_req: AdminRequest, res: Response) => {
+  try {
+    const [categoriesResult, productsResult, colorsResult] = await Promise.all([
+      pool.query(
+        `
+          SELECT id, code, name, sort_order, is_active
+          FROM product_categories
+          ORDER BY sort_order ASC, name ASC
+        `
+      ),
+      pool.query(
+        `
+          SELECT
+            p.id,
+            c.code AS category_code,
+            c.name AS category_name,
+            p.name,
+            p.description,
+            p.price_cents,
+            p.image_url,
+            p.sort_order,
+            p.is_active
+          FROM products p
+          JOIN product_categories c ON c.id = p.category_id
+          ORDER BY c.sort_order ASC, p.sort_order ASC, p.name ASC
+        `
+      ),
+      pool.query(
+        `
+          SELECT id, name, hex_code, sort_order, is_active
+          FROM product_colors
+          ORDER BY sort_order ASC, name ASC
+        `
+      ),
+    ]);
+
+    return res.json({
+      ok: true,
+      categories: categoriesResult.rows.map(mapProductCategoryRow),
+      products: productsResult.rows.map(mapProductRow),
+      colors: colorsResult.rows.map(mapProductColorRow),
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      ok: false,
+      error: "Could not load admin catalog",
+    });
+  }
+});
+
+
 app.get("/api/admin/orders", requireAdmin, async (_req: AdminRequest, res: Response) => {
   const result = await pool.query(
     `
