@@ -1,4 +1,4 @@
-﻿// @lovable.dev/vite-tanstack-config already includes the following - do NOT add them manually
+// @lovable.dev/vite-tanstack-config already includes the following - do NOT add them manually
 // or the app will break with duplicate plugins:
 //   - tanstackStart, viteReact, tailwindcss, tsConfigPaths, nitro,
 //     componentTagger, VITE_* env injection, @ path alias,
@@ -10,5 +10,13 @@ export default defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts.
     server: { entry: "server" },
+  },
+  vite: {
+    server: {
+      allowedHosts: ["elamora.eu", "www.elamora.eu"],
+    },
+    preview: {
+      allowedHosts: ["elamora.eu", "www.elamora.eu"],
+    },
   },
 });
