@@ -1,8 +1,9 @@
-﻿import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
-import { loadOrders, type LocalOrder } from "@/lib/order-storage";
 import { formatPrice } from "@/lib/format";
+import { getAdminOrders, type ApiOrder } from "@/lib/orders-api";
+import { fetchAdminCatalog } from "@/lib/admin-catalog-api";
 import { ShoppingBag, Clock, TrendingUp, Package } from "lucide-react";
 
 export const Route = createFileRoute("/admin/")({
@@ -11,10 +12,48 @@ export const Route = createFileRoute("/admin/")({
 });
 
 function AdminDashboard() {
-  const [orders, setOrders] = useState<LocalOrder[]>([]);
+  const [orders, setOrders] = useState<ApiOrder[]>([]);
+  const [activeProductsCount, setActiveProductsCount] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    setOrders(loadOrders());
+    let cancelled = false;
+
+    async function loadDashboard() {
+      try {
+        setIsLoading(true);
+        setLoadError(null);
+
+        const [nextOrders, catalog] = await Promise.all([
+          getAdminOrders(),
+          fetchAdminCatalog(),
+        ]);
+
+        if (!cancelled) {
+          setOrders(nextOrders);
+          setActiveProductsCount(
+            catalog.allProducts.filter((product) => product.active).length
+          );
+        }
+      } catch (error) {
+        console.error(error);
+
+        if (!cancelled) {
+          setLoadError("Could not load dashboard data from the database.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadDashboard();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const stats = useMemo(() => {
@@ -24,35 +63,41 @@ function AdminDashboard() {
     return [
       {
         label: "Total orders",
-        value: String(orders.length),
+        value: isLoading ? "…" : String(orders.length),
         icon: ShoppingBag,
-        note: "Local orders",
+        note: "Database orders",
       },
       {
         label: "Pending orders",
-        value: String(pendingOrders),
+        value: isLoading ? "…" : String(pendingOrders),
         icon: Clock,
         note: "Awaiting confirmation",
       },
       {
-        label: "Local revenue",
-        value: formatPrice(revenueCents),
+        label: "Revenue",
+        value: isLoading ? "…" : formatPrice(revenueCents),
         icon: TrendingUp,
-        note: "From local orders",
+        note: "From database orders",
       },
       {
         label: "Active products",
-        value: "—",
+        value: isLoading ? "…" : String(activeProductsCount ?? 0),
         icon: Package,
-        note: "Catalog stats not wired yet",
+        note: "From PostgreSQL catalog",
       },
     ];
-  }, [orders]);
+  }, [orders, activeProductsCount, isLoading]);
 
   const recentOrders = orders.slice(0, 5);
 
   return (
     <AdminLayout title="Dashboard">
+      {loadError ? (
+        <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {loadError}
+        </div>
+      ) : null}
+
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((s) => (
           <div
@@ -72,9 +117,13 @@ function AdminDashboard() {
       <div className="mt-8 bg-surface/80 border border-border/60 rounded-2xl p-6 shadow-soft">
         <h2 className="font-display text-lg mb-2">Recent activity</h2>
 
-        {recentOrders.length === 0 ? (
+        {isLoading ? (
           <p className="text-sm text-muted-foreground">
-            No local orders yet. The latest orders will appear here.
+            Loading recent orders from database...
+          </p>
+        ) : recentOrders.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No database orders yet. The latest orders will appear here.
           </p>
         ) : (
           <div className="space-y-3">

@@ -9,7 +9,7 @@ import {
 import type { BucketConfiguration, Product } from "@/types";
 import {
   fetchCatalog,
-  getFallbackCatalog,
+  emptyCatalog,
   type CatalogData,
 } from "@/lib/catalog-api";
 
@@ -42,7 +42,7 @@ const ConfiguratorContext = createContext<ConfiguratorContextValue | null>(null)
 
 export function ConfiguratorProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<BucketConfiguration>(defaultConfig);
-  const [catalog, setCatalog] = useState<CatalogData>(() => getFallbackCatalog());
+  const [catalog, setCatalog] = useState<CatalogData>(() => emptyCatalog);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState<string | null>(null);
 
@@ -63,7 +63,7 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
         console.error(error);
 
         if (!cancelled) {
-          setCatalog(getFallbackCatalog());
+          setCatalog(emptyCatalog);
           setCatalogError("Could not load live catalog. Showing fallback catalog.");
         }
       } finally {

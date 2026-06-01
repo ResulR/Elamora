@@ -4,7 +4,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { SectionTitle } from "@/components/ui-kit/SectionTitle";
 import { loadConfiguration } from "@/lib/configuration-storage";
 import { createDatabaseOrder } from "@/lib/orders-api";
-import { fetchCatalog, getFallbackCatalog, type CatalogData } from "@/lib/catalog-api";
+import { fetchCatalog, emptyCatalog, type CatalogData } from "@/lib/catalog-api";
 import { formatPrice } from "@/lib/format";
 import type { BucketConfiguration } from "@/types";
 
@@ -23,7 +23,7 @@ function CheckoutPage() {
   const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "delivery">("pickup");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [catalog, setCatalog] = useState<CatalogData>(() => getFallbackCatalog());
+  const [catalog, setCatalog] = useState<CatalogData>(() => emptyCatalog);
 
   useEffect(() => {
     let cancelled = false;
@@ -41,7 +41,7 @@ function CheckoutPage() {
         console.error(error);
 
         if (!cancelled) {
-          setCatalog(getFallbackCatalog());
+          setCatalog(emptyCatalog);
         }
       }
     }

@@ -65,9 +65,9 @@ const createOrderSchema = z.object({
   items: z
     .array(
       z.object({
-        productId: z.string().uuid().nullable().optional().default(null),
-        productName: z.string().trim().min(1).max(255),
-        unitPriceCents: z.number().int().min(0).max(1_000_000),
+        productId: z.string().uuid(),
+        productName: z.string().trim().min(1).max(255).optional().default(""),
+        unitPriceCents: z.number().int().min(0).max(1_000_000).optional().default(0),
         quantity: z.number().int().min(1).max(99).default(1),
         colorId: z.string().uuid().nullable().optional().default(null),
         colorName: z.string().trim().max(120).optional().default(""),
@@ -181,38 +181,36 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
 
     for (const item of payload.items) {
       let productId = item.productId;
-      let productName = item.productName;
-      let unitPriceCents = item.unitPriceCents;
+      let productName = "";
+      let unitPriceCents = 0;
       let colorId = item.colorId;
       let colorName = item.colorName || null;
       let colorHex = item.colorHex || null;
 
-      if (productId) {
-        const productResult = await client.query(
-          `
-            SELECT id, name, price_cents
-            FROM products
-            WHERE id = $1
-              AND is_active = true
-            LIMIT 1
-          `,
-          [productId]
-        );
+      const productResult = await client.query(
+        `
+          SELECT id, name, price_cents
+          FROM products
+          WHERE id = $1
+            AND is_active = true
+          LIMIT 1
+        `,
+        [productId]
+      );
 
-        const product = productResult.rows[0];
+      const product = productResult.rows[0];
 
-        if (!product) {
-          await client.query("ROLLBACK");
-          return res.status(400).json({
-            ok: false,
-            error: "Invalid product",
-          });
-        }
-
-        productId = product.id;
-        productName = product.name;
-        unitPriceCents = product.price_cents;
+      if (!product) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          ok: false,
+          error: "Invalid product",
+        });
       }
+
+      productId = product.id;
+      productName = product.name;
+      unitPriceCents = product.price_cents;
 
       if (colorId) {
         const colorResult = await client.query(
