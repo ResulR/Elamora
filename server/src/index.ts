@@ -1,4 +1,4 @@
-﻿import express, { type Request, type Response } from "express";
+import express, { type Request, type Response } from "express";
 import helmet from "helmet";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -97,6 +97,64 @@ app.get("/api/health", async (_req: Request, res: Response) => {
     });
   }
 });
+
+
+app.get("/api/catalog", async (_req: Request, res: Response) => {
+  try {
+    const [categoriesResult, productsResult, colorsResult] = await Promise.all([
+      pool.query(
+        `
+          SELECT id, code, name, sort_order, is_active
+          FROM product_categories
+          WHERE is_active = true
+          ORDER BY sort_order ASC, name ASC
+        `
+      ),
+      pool.query(
+        `
+          SELECT
+            p.id,
+            c.code AS category_code,
+            c.name AS category_name,
+            p.name,
+            p.description,
+            p.price_cents,
+            p.image_url,
+            p.sort_order,
+            p.is_active
+          FROM products p
+          JOIN product_categories c ON c.id = p.category_id
+          WHERE p.is_active = true
+            AND c.is_active = true
+          ORDER BY c.sort_order ASC, p.sort_order ASC, p.name ASC
+        `
+      ),
+      pool.query(
+        `
+          SELECT id, name, hex_code, sort_order, is_active
+          FROM product_colors
+          WHERE is_active = true
+          ORDER BY sort_order ASC, name ASC
+        `
+      ),
+    ]);
+
+    return res.json({
+      ok: true,
+      categories: categoriesResult.rows.map(mapProductCategoryRow),
+      products: productsResult.rows.map(mapProductRow),
+      colors: colorsResult.rows.map(mapProductColorRow),
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      ok: false,
+      error: "Could not load catalog",
+    });
+  }
+});
+
 
 app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) => {
   const parsed = createOrderSchema.safeParse(req.body);
@@ -401,6 +459,41 @@ app.use((_req: Request, res: Response) => {
 app.listen(config.port, "127.0.0.1", () => {
   console.log(`Elamora API listening on 127.0.0.1:${config.port}`);
 });
+
+
+function mapProductCategoryRow(row: any) {
+  return {
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    sortOrder: row.sort_order,
+    isActive: row.is_active,
+  };
+}
+
+function mapProductRow(row: any) {
+  return {
+    id: row.id,
+    category: row.category_code,
+    categoryName: row.category_name,
+    name: row.name,
+    description: row.description ?? "",
+    priceCents: row.price_cents,
+    imageUrl: row.image_url ?? "",
+    sortOrder: row.sort_order,
+    isActive: row.is_active,
+  };
+}
+
+function mapProductColorRow(row: any) {
+  return {
+    id: row.id,
+    name: row.name,
+    hexCode: row.hex_code,
+    sortOrder: row.sort_order,
+    isActive: row.is_active,
+  };
+}
 
 async function createOrderReference(client: { query: typeof pool.query }): Promise<string> {
   const result = await client.query("SELECT COUNT(*)::int AS count FROM orders");
