@@ -1,21 +1,20 @@
-﻿import { Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useConfigurator } from "@/lib/configurator-context";
-import { findProduct } from "@/data/catalog";
 import { formatPrice } from "@/lib/format";
 import { saveConfiguration } from "@/lib/configuration-storage";
 
 export function OrderSummary() {
-  const { config, totalPrice } = useConfigurator();
-  const bucket = findProduct(config.bucketId);
+  const { config, totalPrice, findCatalogProduct } = useConfigurator();
+  const bucket = findCatalogProduct(config.bucketId);
 
   const lines: Array<{ label: string; price: number }> = [];
   if (bucket) lines.push({ label: bucket.name, price: bucket.price });
   config.flowerIds.forEach((id) => {
-    const p = findProduct(id);
+    const p = findCatalogProduct(id);
     if (p) lines.push({ label: p.name, price: p.price });
   });
   config.balloonIds.forEach((id) => {
-    const p = findProduct(id);
+    const p = findCatalogProduct(id);
     if (p) lines.push({ label: p.name, price: p.price });
   });
 

@@ -5,6 +5,7 @@ export type ProductCategory = "bucket" | "flower" | "balloon" | "color";
 
 export interface Product {
   id: string;
+  dbId?: string;
   name: string;
   category: ProductCategory;
   price: number; // in cents

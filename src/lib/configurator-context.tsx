@@ -1,12 +1,17 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
-import type { BucketConfiguration } from "@/types";
-import { findProduct } from "@/data/catalog";
+import type { BucketConfiguration, Product } from "@/types";
+import {
+  fetchCatalog,
+  getFallbackCatalog,
+  type CatalogData,
+} from "@/lib/catalog-api";
 
 const defaultConfig: BucketConfiguration = {
   bucketId: null,
@@ -27,20 +32,70 @@ interface ConfiguratorContextValue {
   setMessage: (v: string) => void;
   reset: () => void;
   totalPrice: number;
+  catalog: CatalogData;
+  catalogLoading: boolean;
+  catalogError: string | null;
+  findCatalogProduct: (id: string | null | undefined) => Product | undefined;
 }
 
 const ConfiguratorContext = createContext<ConfiguratorContextValue | null>(null);
 
 export function ConfiguratorProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<BucketConfiguration>(defaultConfig);
+  const [catalog, setCatalog] = useState<CatalogData>(() => getFallbackCatalog());
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCatalog() {
+      try {
+        setCatalogLoading(true);
+        setCatalogError(null);
+
+        const nextCatalog = await fetchCatalog();
+
+        if (!cancelled) {
+          setCatalog(nextCatalog);
+        }
+      } catch (error) {
+        console.error(error);
+
+        if (!cancelled) {
+          setCatalog(getFallbackCatalog());
+          setCatalogError("Could not load live catalog. Showing fallback catalog.");
+        }
+      } finally {
+        if (!cancelled) {
+          setCatalogLoading(false);
+        }
+      }
+    }
+
+    void loadCatalog();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const productById = useMemo(() => {
+    return new Map(catalog.allProducts.map((product) => [product.id, product]));
+  }, [catalog.allProducts]);
+
+  const findCatalogProduct = (id: string | null | undefined) => {
+    if (!id) return undefined;
+    return productById.get(id);
+  };
 
   const totalPrice = useMemo(() => {
     let total = 0;
-    total += findProduct(config.bucketId)?.price ?? 0;
-    config.flowerIds.forEach((id) => (total += findProduct(id)?.price ?? 0));
-    config.balloonIds.forEach((id) => (total += findProduct(id)?.price ?? 0));
+    total += findCatalogProduct(config.bucketId)?.price ?? 0;
+    config.flowerIds.forEach((id) => (total += findCatalogProduct(id)?.price ?? 0));
+    config.balloonIds.forEach((id) => (total += findCatalogProduct(id)?.price ?? 0));
     return total;
-  }, [config]);
+  }, [config, productById]);
 
   const value: ConfiguratorContextValue = {
     config,
@@ -64,6 +119,10 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
     setMessage: (v) => setConfig((c) => ({ ...c, message: v })),
     reset: () => setConfig(defaultConfig),
     totalPrice,
+    catalog,
+    catalogLoading,
+    catalogError,
+    findCatalogProduct,
   };
 
   return (

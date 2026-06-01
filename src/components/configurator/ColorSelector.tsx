@@ -1,11 +1,11 @@
 import { useConfigurator } from "@/lib/configurator-context";
-import { colors } from "@/data/catalog";
 
 export function ColorSelector() {
-  const { config, setColor } = useConfigurator();
+  const { config, setColor, catalog, catalogLoading } = useConfigurator();
   return (
     <div className="flex flex-wrap gap-3">
-      {colors.map((c) => {
+      {catalogLoading && <p className="w-full text-xs text-muted-foreground">Loading live catalog...</p>}
+      {catalog.colors.map((c) => {
         const active = config.colorId === c.id;
         return (
           <button

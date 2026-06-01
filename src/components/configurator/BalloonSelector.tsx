@@ -1,12 +1,12 @@
 import { useConfigurator } from "@/lib/configurator-context";
-import { balloons } from "@/data/catalog";
 import { formatPrice } from "@/lib/format";
 
 export function BalloonSelector() {
-  const { config, toggleBalloon } = useConfigurator();
+  const { config, toggleBalloon, catalog, catalogLoading } = useConfigurator();
   return (
     <div className="grid grid-cols-2 gap-2">
-      {balloons.map((b) => {
+      {catalogLoading && <p className="col-span-2 text-xs text-muted-foreground">Loading live catalog...</p>}
+      {catalog.balloons.map((b) => {
         const active = config.balloonIds.includes(b.id);
         return (
           <button

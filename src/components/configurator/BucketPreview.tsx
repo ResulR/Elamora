@@ -1,5 +1,4 @@
 import { useConfigurator } from "@/lib/configurator-context";
-import { findProduct } from "@/data/catalog";
 
 /**
  * 2D layered preview of the gift bucket.
@@ -7,8 +6,8 @@ import { findProduct } from "@/data/catalog";
  * TODO: swap shapes for branded illustrations once design assets are ready.
  */
 export function BucketPreview() {
-  const { config } = useConfigurator();
-  const color = findProduct(config.colorId)?.colorHex ?? "#f4c6c6";
+  const { config, findCatalogProduct } = useConfigurator();
+  const color = findCatalogProduct(config.colorId)?.colorHex ?? "#f4c6c6";
   const hasBucket = !!config.bucketId;
 
   return (

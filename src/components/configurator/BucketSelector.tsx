@@ -1,12 +1,12 @@
 import { useConfigurator } from "@/lib/configurator-context";
-import { buckets } from "@/data/catalog";
 import { formatPrice } from "@/lib/format";
 
 export function BucketSelector() {
-  const { config, setBucket } = useConfigurator();
+  const { config, setBucket, catalog, catalogLoading } = useConfigurator();
   return (
     <div className="grid grid-cols-2 gap-3">
-      {buckets.map((b) => {
+      {catalogLoading && <p className="col-span-2 text-xs text-muted-foreground">Loading live catalog...</p>}
+      {catalog.buckets.map((b) => {
         const active = config.bucketId === b.id;
         return (
           <button
