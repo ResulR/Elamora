@@ -12,15 +12,15 @@ export function PublicHeader() {
           <span className="font-display text-lg tracking-tight">Elamora</span>
         </Link>
         <nav className="hidden md:flex items-center gap-7 text-sm text-muted-foreground">
-          <Link to="/" className="hover:text-foreground transition-colors">Configurator</Link>
-          <span className="opacity-50 cursor-not-allowed" title="TODO">About</span>
-          <span className="opacity-50 cursor-not-allowed" title="TODO">Contact</span>
+          <a href="#creations" className="hover:text-foreground transition-colors">Creations</a>
+          <a href="#how" className="hover:text-foreground transition-colors">How it works</a>
+          <Link to="/configure" className="hover:text-foreground transition-colors">Configurator</Link>
         </nav>
         <Link
-          to="/login"
-          className="text-sm px-4 py-2 rounded-full border border-border hover:bg-surface transition-colors"
+          to="/configure"
+          className="text-sm px-4 py-2 rounded-full bg-primary text-primary-foreground shadow-soft hover:opacity-90 transition-opacity"
         >
-          Login
+          Create your gift
         </Link>
       </div>
     </header>

@@ -52,7 +52,7 @@ function ConfirmationPage() {
             Please create and place an order before opening the confirmation page.
           </p>
           <Link
-            to="/"
+            to="/configure"
             className="inline-block mt-8 px-6 py-3 rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
           >
             Back to configurator
@@ -117,10 +117,10 @@ function ConfirmationPage() {
 
         <div className="mt-10">
           <Link
-            to="/"
+            to="/configure"
             className="inline-block px-6 py-3 rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
           >
-            Create another bucket
+            Create another gift
           </Link>
         </div>
       </div>

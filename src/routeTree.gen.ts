@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ConfirmationRouteImport } from './routes/confirmation'
+import { Route as ConfigureRouteImport } from './routes/configure'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
@@ -27,6 +28,11 @@ const LoginRoute = LoginRouteImport.update({
 const ConfirmationRoute = ConfirmationRouteImport.update({
   id: '/confirmation',
   path: '/confirmation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfigureRoute = ConfigureRouteImport.update({
+  id: '/configure',
+  path: '/configure',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CheckoutRoute = CheckoutRouteImport.update({
@@ -68,6 +74,7 @@ const AdminOrdersIdRoute = AdminOrdersIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/checkout': typeof CheckoutRoute
+  '/configure': typeof ConfigureRoute
   '/confirmation': typeof ConfirmationRoute
   '/login': typeof LoginRoute
   '/admin/products': typeof AdminProductsRoute
@@ -79,6 +86,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/checkout': typeof CheckoutRoute
+  '/configure': typeof ConfigureRoute
   '/confirmation': typeof ConfirmationRoute
   '/login': typeof LoginRoute
   '/admin/products': typeof AdminProductsRoute
@@ -91,6 +99,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/checkout': typeof CheckoutRoute
+  '/configure': typeof ConfigureRoute
   '/confirmation': typeof ConfirmationRoute
   '/login': typeof LoginRoute
   '/admin/products': typeof AdminProductsRoute
@@ -104,6 +113,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/checkout'
+    | '/configure'
     | '/confirmation'
     | '/login'
     | '/admin/products'
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/checkout'
+    | '/configure'
     | '/confirmation'
     | '/login'
     | '/admin/products'
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/checkout'
+    | '/configure'
     | '/confirmation'
     | '/login'
     | '/admin/products'
@@ -138,6 +150,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CheckoutRoute: typeof CheckoutRoute
+  ConfigureRoute: typeof ConfigureRoute
   ConfirmationRoute: typeof ConfirmationRoute
   LoginRoute: typeof LoginRoute
   AdminProductsRoute: typeof AdminProductsRoute
@@ -161,6 +174,13 @@ declare module '@tanstack/react-router' {
       path: '/confirmation'
       fullPath: '/confirmation'
       preLoaderRoute: typeof ConfirmationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/configure': {
+      id: '/configure'
+      path: '/configure'
+      fullPath: '/configure'
+      preLoaderRoute: typeof ConfigureRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/checkout': {
@@ -218,6 +238,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CheckoutRoute: CheckoutRoute,
+  ConfigureRoute: ConfigureRoute,
   ConfirmationRoute: ConfirmationRoute,
   LoginRoute: LoginRoute,
   AdminProductsRoute: AdminProductsRoute,

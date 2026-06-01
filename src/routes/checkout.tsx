@@ -170,7 +170,7 @@ function CheckoutPage() {
               Please create your gift bucket before continuing to checkout.
             </p>
             <Link
-              to="/"
+              to="/configure"
               className="inline-block mt-6 px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
             >
               Back to configurator
@@ -261,7 +261,7 @@ function CheckoutPage() {
                 {isSubmitting ? "Placing order..." : "Place order"}
               </button>
 
-              <Link to="/" className="block mt-3 text-center text-xs text-muted-foreground hover:text-foreground">
+              <Link to="/configure" className="block mt-3 text-center text-xs text-muted-foreground hover:text-foreground">
                 Edit configuration
               </Link>
 
