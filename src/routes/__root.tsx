@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
+import { IntroEnvelope } from "@/components/intro/IntroEnvelope";
 
 function NotFoundComponent() {
   return (
@@ -115,8 +116,9 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <IntroEnvelope>
+        <Outlet />
+      </IntroEnvelope>
     </QueryClientProvider>
   );
 }
