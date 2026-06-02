@@ -1,25 +1,39 @@
 import { useConfigurator } from "@/lib/configurator-context";
 import { formatPrice } from "@/lib/format";
+import { getProductImageUrl } from "@/lib/product-images";
 
 export function FlowerSelector() {
   const { config, toggleFlower, catalog, catalogLoading } = useConfigurator();
   return (
     <div className="grid grid-cols-3 gap-2">
-      {catalogLoading && <p className="col-span-3 text-xs text-muted-foreground">Loading live catalog...</p>}
+      {catalogLoading && (
+        <p className="col-span-3 text-xs text-muted-foreground">Loading live catalog...</p>
+      )}
       {catalog.flowers.map((f) => {
         const active = config.flowerIds.includes(f.id);
-        const count = config.flowerIds.filter((id) => id === f.id).length;
+        const count  = config.flowerIds.filter((id) => id === f.id).length;
+        const imgUrl = getProductImageUrl(f);
         return (
           <button
             key={f.id}
             onClick={() => toggleFlower(f.id)}
-            className={`relative rounded-xl border p-2 text-center transition-all ${
+            className={[
+              "relative rounded-xl border-2 p-2 text-center transition-all focus:outline-none focus-visible:outline-none",
               active
-                ? "border-primary bg-primary-soft/40"
-                : "border-border hover:border-primary/60 bg-surface"
-            }`}
+                ? "border-primary bg-primary-soft/30"
+                : "border-transparent bg-surface hover:border-primary/30 hover:bg-primary-soft/10",
+            ].join(" ")}
           >
-            <div className="mx-auto h-10 w-10 rounded-full bg-gradient-to-br from-primary-soft to-accent/60 mb-1" />
+            {imgUrl ? (
+              <img
+                src={imgUrl}
+                alt={f.name}
+                loading="lazy"
+                className="mx-auto w-full aspect-square object-contain rounded-md mb-1"
+              />
+            ) : (
+              <div className="mx-auto h-14 w-14 rounded-full bg-gradient-to-br from-primary-soft to-accent/60 mb-1" />
+            )}
             <p className="text-xs font-medium">{f.name}</p>
             <p className="text-[10px] text-muted-foreground">{formatPrice(f.price)}</p>
             {count > 0 && (

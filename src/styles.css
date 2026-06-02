@@ -42,81 +42,100 @@
   --font-display: "Fraunces", "Cormorant Garamond", Georgia, serif;
   --font-sans: "Inter", system-ui, sans-serif;
 
-  --shadow-soft: 0 1px 2px oklch(0.2 0.02 20 / 0.04), 0 4px 12px oklch(0.2 0.02 20 / 0.05);
-  --shadow-elevated: 0 4px 12px oklch(0.2 0.02 20 / 0.06), 0 16px 40px oklch(0.2 0.02 20 / 0.08);
-  --shadow-bloom: 0 30px 60px -20px oklch(0.55 0.12 15 / 0.25);
+  /* Lavender-tinted shadows */
+  --shadow-soft: 0 1px 2px oklch(0.23 0.06 308 / 0.05), 0 4px 12px oklch(0.23 0.06 308 / 0.07);
+  --shadow-elevated: 0 4px 12px oklch(0.23 0.06 308 / 0.07), 0 16px 40px oklch(0.23 0.06 308 / 0.10);
+  --shadow-bloom: 0 30px 60px -20px oklch(0.52 0.10 302 / 0.28);
 }
 
 :root {
   --radius: 0.875rem;
 
-  /* Cream / blush / petal palette */
-  --background: oklch(0.985 0.008 60);
-  --foreground: oklch(0.22 0.025 25);
+  /* ── Elamora Lavender Boutique ──────────────────────────────────────────
+     Inspired by the intro envelope — lavender / soft lilac aesthetic.
+     Matches the video envelope color for seamless visual continuity.
 
-  --surface: oklch(1 0 0);
-  --surface-elevated: oklch(0.995 0.005 60);
+     Background: envelope lavender #E8DDF0
+     Cards:      lighter lavender  #F5EFF8
+     Primary:    deep lilac        #8E6BAE
+     Foreground: plum-dark         #3E314A
+     Accent:     champagne gold    #D6B889          */
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.025 25);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.025 25);
+  /* Page background — matches intro envelope lavender */
+  --background: oklch(0.90 0.04 307);
+  /* Deep plum — warm, elegant, legible on lavender */
+  --foreground: oklch(0.23 0.06 308);
 
-  /* Dusty rose primary */
-  --primary: oklch(0.58 0.11 18);
-  --primary-foreground: oklch(0.99 0.005 60);
-  --primary-soft: oklch(0.93 0.04 20);
+  /* Lighter lavender card surfaces */
+  --surface: oklch(0.97 0.015 307);
+  --surface-elevated: oklch(0.97 0.015 307);
 
-  --secondary: oklch(0.95 0.015 60);
-  --secondary-foreground: oklch(0.3 0.03 25);
+  --card: oklch(0.96 0.02 307);
+  --card-foreground: oklch(0.23 0.06 308);
+  --popover: oklch(0.97 0.015 307);
+  --popover-foreground: oklch(0.23 0.06 308);
 
-  --muted: oklch(0.96 0.01 60);
-  --muted-foreground: oklch(0.5 0.02 30);
+  /* Deep lilac primary — strong enough for CTA contrast on lavender bg */
+  --primary: oklch(0.52 0.10 302);
+  --primary-foreground: oklch(0.998 0.004 320);
+  /* Soft lavender for tints, selected states, hover backgrounds */
+  --primary-soft: oklch(0.87 0.04 307);
 
-  --accent: oklch(0.88 0.06 95);
-  --accent-foreground: oklch(0.28 0.04 40);
+  --secondary: oklch(0.93 0.03 307);
+  --secondary-foreground: oklch(0.28 0.06 308);
 
-  --destructive: oklch(0.58 0.2 25);
-  --destructive-foreground: oklch(0.99 0.005 60);
+  /* Muted lavender for section backgrounds */
+  --muted: oklch(0.92 0.03 307);
+  /* Medium lilac text — legible on both lavender bg and card bg */
+  --muted-foreground: oklch(0.45 0.065 308);
 
-  --success: oklch(0.68 0.13 150);
-  --success-foreground: oklch(0.99 0.005 60);
+  /* Champagne / warm gold accent */
+  --accent: oklch(0.78 0.06 72);
+  --accent-foreground: oklch(0.23 0.05 50);
 
-  --warning: oklch(0.78 0.13 75);
-  --warning-foreground: oklch(0.25 0.04 40);
+  --destructive: oklch(0.58 0.2 22);
+  --destructive-foreground: oklch(0.99 0.003 20);
 
-  --border: oklch(0.91 0.012 50);
-  --input: oklch(0.93 0.012 50);
-  --ring: oklch(0.58 0.11 18);
+  --success: oklch(0.66 0.13 150);
+  --success-foreground: oklch(0.99 0.003 150);
+
+  --warning: oklch(0.78 0.13 72);
+  --warning-foreground: oklch(0.24 0.04 38);
+
+  /* Lavender borders — visible but soft */
+  --border: oklch(0.84 0.05 307);
+  --input: oklch(0.90 0.03 307);
+  /* Focus ring matches primary */
+  --ring: oklch(0.52 0.10 302);
 }
 
 .dark {
-  --background: oklch(0.18 0.015 25);
-  --foreground: oklch(0.96 0.008 60);
-  --surface: oklch(0.22 0.018 25);
-  --surface-elevated: oklch(0.25 0.02 25);
-  --card: oklch(0.22 0.018 25);
-  --card-foreground: oklch(0.96 0.008 60);
-  --popover: oklch(0.22 0.018 25);
-  --popover-foreground: oklch(0.96 0.008 60);
-  --primary: oklch(0.72 0.12 20);
-  --primary-foreground: oklch(0.18 0.015 25);
-  --primary-soft: oklch(0.32 0.05 20);
-  --secondary: oklch(0.28 0.02 25);
-  --secondary-foreground: oklch(0.96 0.008 60);
-  --muted: oklch(0.26 0.018 25);
-  --muted-foreground: oklch(0.7 0.015 40);
-  --accent: oklch(0.4 0.06 80);
-  --accent-foreground: oklch(0.96 0.008 60);
+  --background: oklch(0.18 0.04 308);
+  --foreground: oklch(0.93 0.015 310);
+  --surface: oklch(0.22 0.04 308);
+  --surface-elevated: oklch(0.25 0.04 308);
+  --card: oklch(0.22 0.04 308);
+  --card-foreground: oklch(0.93 0.015 310);
+  --popover: oklch(0.22 0.04 308);
+  --popover-foreground: oklch(0.93 0.015 310);
+  --primary: oklch(0.72 0.10 302);
+  --primary-foreground: oklch(0.15 0.04 308);
+  --primary-soft: oklch(0.32 0.06 308);
+  --secondary: oklch(0.28 0.04 308);
+  --secondary-foreground: oklch(0.93 0.015 310);
+  --muted: oklch(0.26 0.03 308);
+  --muted-foreground: oklch(0.68 0.04 308);
+  --accent: oklch(0.65 0.07 72);
+  --accent-foreground: oklch(0.93 0.015 310);
   --destructive: oklch(0.65 0.2 25);
-  --destructive-foreground: oklch(0.99 0.005 60);
+  --destructive-foreground: oklch(0.99 0.005 20);
   --success: oklch(0.7 0.13 150);
-  --success-foreground: oklch(0.18 0.015 25);
+  --success-foreground: oklch(0.15 0.015 150);
   --warning: oklch(0.78 0.13 75);
   --warning-foreground: oklch(0.18 0.015 25);
-  --border: oklch(0.3 0.02 25);
-  --input: oklch(0.3 0.02 25);
-  --ring: oklch(0.72 0.12 20);
+  --border: oklch(0.32 0.05 308);
+  --input: oklch(0.32 0.05 308);
+  --ring: oklch(0.72 0.10 302);
 }
 
 @layer base {
@@ -125,9 +144,10 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    /* Lavender boutique gradient — lighter at top, champagne hint at bottom */
     background-image:
-      radial-gradient(ellipse 80% 50% at 50% -10%, oklch(0.93 0.04 20 / 0.5), transparent),
-      radial-gradient(ellipse 60% 40% at 100% 100%, oklch(0.88 0.06 95 / 0.3), transparent);
+      radial-gradient(ellipse 80% 50% at 50% -10%, oklch(0.96 0.02 307 / 0.8), transparent),
+      radial-gradient(ellipse 60% 40% at 100% 100%, oklch(0.78 0.06 72 / 0.12), transparent);
     background-attachment: fixed;
   }
   h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.02em; }

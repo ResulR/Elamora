@@ -14,6 +14,16 @@ export default defineConfig({
   vite: {
     server: {
       allowedHosts: ["elamora.eu", "www.elamora.eu"],
+      // Proxy /api/* to the production API during local development.
+      // The Express API server runs on elamora.eu and requires a DB connection
+      // that is not available locally — proxying to prod is the simplest solution.
+      proxy: {
+        "/api": {
+          target: "https://elamora.eu",
+          changeOrigin: true,
+          secure: true,
+        },
+      },
     },
     preview: {
       allowedHosts: ["elamora.eu", "www.elamora.eu"],

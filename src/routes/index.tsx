@@ -53,8 +53,8 @@ function HomePage() {
 
             {/* Left — text */}
             <div className="text-center lg:text-left max-w-xl mx-auto lg:mx-0">
-              <p className="text-xs uppercase tracking-[0.22em] text-primary mb-4">
-                Handmade with love
+              <p className="text-xs uppercase tracking-[0.22em] text-primary mb-4 font-medium">
+                Handcrafted with love
               </p>
               <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl text-foreground leading-tight">
                 Personalized gifts for{" "}
@@ -62,8 +62,8 @@ function HomePage() {
                 moments
               </h1>
               <p className="mt-5 text-base text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                Custom gift boxes, bubble balloons and event compositions made
-                with love — for birthdays, baby showers, weddings and more.
+                Balloon compositions, gift boxes and floral arrangements made by hand —
+                for birthdays, baby showers, weddings and more.
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
                 <Link
@@ -126,7 +126,7 @@ function HomePage() {
       </section>
 
       {/* ══ WHAT WE CREATE ════════════════════════════════════════════════════ */}
-      <section className="py-20 bg-primary-soft/30">
+      <section className="py-20 bg-primary-soft/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
             <p className="text-xs uppercase tracking-[0.22em] text-primary mb-3">Our creations</p>
@@ -191,7 +191,7 @@ function HomePage() {
       </section>
 
       {/* ══ HOW IT WORKS ══════════════════════════════════════════════════════ */}
-      <section id="how" className="py-20 bg-primary-soft/30">
+      <section id="how" className="py-20 bg-primary-soft/20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-14">
             <p className="text-xs uppercase tracking-[0.22em] text-primary mb-3">Simple process</p>
@@ -202,7 +202,7 @@ function HomePage() {
           <div className="grid sm:grid-cols-3 gap-8">
             {HOW_IT_WORKS.map(({ step, title, desc }) => (
               <div key={step} className="text-center">
-                <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary font-display text-lg mb-4">
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/12 text-primary font-display text-lg mb-4 shadow-soft">
                   {step}
                 </div>
                 <h3 className="font-display text-lg text-foreground mb-2">{title}</h3>

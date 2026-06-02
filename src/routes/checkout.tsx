@@ -12,7 +12,7 @@ export const Route = createFileRoute("/checkout")({
   head: () => ({
     meta: [
       { title: "Complete your order - Elamora" },
-      { name: "description", content: "Review your personalized gift bucket and add your delivery details." },
+      { name: "description", content: "Review your personalized gift and add your delivery details." },
     ],
   }),
   component: CheckoutPage,
@@ -159,7 +159,7 @@ function CheckoutPage() {
         <SectionTitle
           eyebrow="Step 2 / 3"
           title="Complete your order"
-          description="Review your gift bucket and add your customer details."
+          description="Review your gift and add your details."
           className="mb-8"
         />
 
@@ -167,7 +167,7 @@ function CheckoutPage() {
           <div className="bg-surface/80 border border-border/60 rounded-2xl p-8 shadow-soft text-center max-w-xl mx-auto">
             <h2 className="font-display text-2xl">No configuration found</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Please create your gift bucket before continuing to checkout.
+              Please choose a creation before continuing to checkout.
             </p>
             <Link
               to="/configure"
@@ -223,7 +223,7 @@ function CheckoutPage() {
               <section className="bg-surface/80 border border-border/60 rounded-2xl p-6 shadow-soft">
                 <h2 className="font-display text-xl mb-4">Personalization</h2>
                 <div className="grid sm:grid-cols-2 gap-4 text-sm">
-                  <InfoRow label="Name on bucket" value={config.firstName || "Not provided"} />
+                  <InfoRow label="Name on gift" value={config.firstName || "Not provided"} />
                   <InfoRow label="Gift message" value={config.message || "Not provided"} />
                   <InfoRow label="Selected color" value={summary.color?.name || "Not selected"} />
                 </div>

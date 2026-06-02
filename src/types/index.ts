@@ -15,12 +15,16 @@ export interface Product {
 }
 
 export interface BucketConfiguration {
+  // v2: designId is the primary selector. bucketId is auto-resolved from
+  // the design's bridgeBucketName and kept for checkout compatibility.
+  designId: string | null;
   bucketId: string | null;
   flowerIds: string[];
   balloonIds: string[];
   colorId: string | null;
   firstName: string;
   message: string;
+  customRequests: string;
 }
 
 export type OrderStatus =
