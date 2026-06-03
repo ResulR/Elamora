@@ -126,7 +126,7 @@ function HomePage() {
       </section>
 
       {/* ══ WHAT WE CREATE ════════════════════════════════════════════════════ */}
-      <section className="py-20 bg-primary-soft/20">
+      <section className="py-20 bg-primary-soft/25">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
             <p className="text-xs uppercase tracking-[0.22em] text-primary mb-3">Our creations</p>
@@ -191,7 +191,7 @@ function HomePage() {
       </section>
 
       {/* ══ HOW IT WORKS ══════════════════════════════════════════════════════ */}
-      <section id="how" className="py-20 bg-primary-soft/20">
+      <section id="how" className="py-20 bg-primary-soft/25">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-14">
             <p className="text-xs uppercase tracking-[0.22em] text-primary mb-3">Simple process</p>

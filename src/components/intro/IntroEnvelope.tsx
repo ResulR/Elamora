@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 
-const INTRO_KEY = 'elamora_intro_seen_v3'
-const VIDEO_SRC = '/intro/enveloppe_animation_v2.mp4'
+const INTRO_KEY = 'elamora_intro_seen_rose_gold_v1'
+// Pink rose gold boutique intro video — blush envelope opening animation.
+const VIDEO_SRC = '/intro/rose-intro-elamora.mp4'
 
 // ─── Timestamps vidéo (secondes) ────────────────────────────────────────────
 const HOME_REVEAL_START_TIME = 4    // homepage commence à apparaître dans la zone enveloppe
