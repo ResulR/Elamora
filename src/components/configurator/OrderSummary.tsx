@@ -1,5 +1,5 @@
+import { Link } from "@tanstack/react-router";
 import { useConfigurator } from "@/lib/configurator-context";
-import { openGlobalCart } from "@/lib/cart-storage";
 import { formatPrice } from "@/lib/format";
 
 function scrollToConfigureTop() {
@@ -13,25 +13,33 @@ function scrollToConfigureTop() {
 
 export function OrderSummary() {
   const {
-    config, selectedDesign, configMode, mobileStep, totalPrice,
-    cartCount, cartTotalCents,
-    addToCart, setDesign, setFirstName, setMessage, setCustomRequests,
+    config,
+    selectedDesign,
+    mobileStep,
+    totalPrice,
+    addToCart,
+    setDesign,
+    setFirstName,
+    setMessage,
+    setCustomRequests,
     setMobileStep,
   } = useConfigurator();
 
   const handleAddToCart = () => {
     if (!selectedDesign) return;
+
     addToCart({
       id: crypto.randomUUID(),
-      designId:       selectedDesign.id,
-      creationName:   selectedDesign.name,
-      imageUrl:       selectedDesign.imageUrl,
+      designId: selectedDesign.id,
+      creationName: selectedDesign.name,
+      imageUrl: selectedDesign.imageUrl,
       basePriceCents: selectedDesign.basePriceCents,
-      bucketId:       config.bucketId,
-      firstName:      config.firstName,
-      message:        config.message,
+      bucketId: config.bucketId,
+      firstName: config.firstName,
+      message: config.message,
       customRequests: config.customRequests,
     });
+
     setDesign(null);
     setFirstName("");
     setMessage("");
@@ -40,123 +48,67 @@ export function OrderSummary() {
     scrollToConfigureTop();
   };
 
-  // ── Custom request mode ──────────────────────────────────────────────────────
-  if (configMode === "custom") {
-    const hasRequest = config.customRequests.trim().length > 0;
-    return (
-      <div className="bg-surface/80 border border-border/60 rounded-2xl p-5 shadow-soft sticky top-20">
-        <h3 className="font-display text-lg mb-4">Your request</h3>
-        {!hasRequest ? (
-          <p className="text-sm text-muted-foreground py-2">
-            Describe your ideal gift above and we'll get back to you.
-          </p>
-        ) : (
-          <div className="space-y-2 mb-4">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Request</p>
-            <p className="italic text-foreground/80 line-clamp-4 text-sm leading-relaxed">{config.customRequests}</p>
-            {(config.firstName || config.message) && (
-              <div className="pt-2 border-t border-border/50 space-y-1 text-xs text-muted-foreground">
-                {config.firstName && <p><span className="text-foreground/60">Name:</span> {config.firstName}</p>}
-                {config.message  && <p className="line-clamp-2"><span className="text-foreground/60">Message:</span> {config.message}</p>}
-              </div>
-            )}
-          </div>
-        )}
-        <div className="border-t border-border pt-3 flex justify-between items-center">
-          <span className="font-display text-base">Price</span>
-          <span className="text-sm text-muted-foreground italic">On request</span>
-        </div>
-        <div className="rounded-xl border border-primary/20 bg-primary-soft/20 p-4 text-center mt-4">
-          <p className="text-sm font-medium text-foreground mb-1">Ready to submit?</p>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Request submission coming soon. Contact us to finalize your custom gift.
-          </p>
-        </div>
-        <p className="mt-3 text-[10px] text-muted-foreground text-center italic leading-relaxed">
-          We'll confirm the price after reviewing your request.
-        </p>
-      </div>
-    );
+  if (!selectedDesign || mobileStep !== "personalize") {
+    return null;
   }
 
-  // ── Our creations mode ───────────────────────────────────────────────────────
-  const hasCreation = !!selectedDesign;
-  const inStep2     = mobileStep === "personalize";
+  const details = [
+    config.firstName ? `For "${config.firstName}"` : null,
+    config.message ? `message included` : null,
+    config.customRequests ? `special request included` : null,
+  ].filter(Boolean);
 
   return (
-    <div className="bg-surface/80 border border-border/60 rounded-2xl p-5 shadow-soft sticky top-20 space-y-4">
+    <div className="bg-card rounded-[32px] border border-primary/15 p-8 md:p-10 shadow-[0_30px_60px_-30px_rgba(176,122,102,0.25)]">
+      <div className="flex items-center gap-4 mb-8">
+        <span className="h-px flex-1 bg-primary/30" />
+        <span className="text-[10px] uppercase tracking-[0.3em] text-primary font-semibold">
+          Your composition
+        </span>
+        <span className="h-px flex-1 bg-primary/30" />
+      </div>
 
-      {/* Cart indicator — desktop */}
-      {cartCount > 0 && (
-        <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-primary-soft/25 border border-primary/15">
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-primary font-semibold">Cart</p>
-            <p className="text-sm font-medium text-foreground">
-              {cartCount} creation{cartCount > 1 ? "s" : ""} · {formatPrice(cartTotalCents)}
-            </p>
-          </div>
-          <button
-            onClick={() => openGlobalCart()}
-            className="text-xs px-3 py-1.5 rounded-full bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity"
-          >
-            View →
-          </button>
-        </div>
-      )}
+      <div className="flex justify-between items-baseline gap-5 mb-2">
+        <h3 className="font-display text-2xl leading-tight">
+          {selectedDesign.name}
+        </h3>
 
-      <h3 className="font-display text-lg">Order summary</h3>
+        <span className="font-display text-xl text-primary whitespace-nowrap">
+          {formatPrice(totalPrice)}
+        </span>
+      </div>
 
-      {!hasCreation ? (
-        <p className="text-sm text-muted-foreground py-2">
-          Your composition will appear here once you choose a creation.
-        </p>
-      ) : (
-        <div className="space-y-3">
-          <div className="pb-3 border-b border-border/60">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-medium">{selectedDesign.name}</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">{selectedDesign.includes}</p>
-              </div>
-              <span className="text-sm text-muted-foreground flex-shrink-0">{formatPrice(totalPrice)}</span>
-            </div>
-          </div>
-          {(config.firstName || config.message || config.customRequests) && (
-            <div className="space-y-1 text-xs text-muted-foreground">
-              {config.firstName     && <p><span className="text-foreground/60">Name:</span> {config.firstName}</p>}
-              {config.message       && <p className="line-clamp-2"><span className="text-foreground/60">Message:</span> {config.message}</p>}
-              {config.customRequests && <p className="line-clamp-2"><span className="text-foreground/60">Special request:</span> {config.customRequests}</p>}
-            </div>
-          )}
-        </div>
-      )}
+      <p className="text-sm italic text-foreground/55 mb-10 leading-relaxed">
+        {details.length > 0
+          ? details.join(" · ")
+          : "Personal details will appear here as you write them."}
+      </p>
 
-      {hasCreation && (
-        <div className="border-t border-border pt-3 flex justify-between font-display text-lg">
-          <span>Total</span>
-          <span className="text-primary">{formatPrice(totalPrice)}</span>
-        </div>
-      )}
+      <div className="flex items-baseline justify-between border-t border-primary/15 pt-6 mb-8">
+        <span className="text-[11px] uppercase tracking-[0.25em] text-foreground/60">
+          Subtotal
+        </span>
 
-      {/* Add to cart — desktop step 2 */}
-      {inStep2 && hasCreation && (
+        <span className="font-display text-2xl">
+          {formatPrice(totalPrice)}
+        </span>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3">
         <button
           onClick={handleAddToCart}
-          className="w-full px-4 py-3 rounded-full font-medium text-sm bg-primary text-primary-foreground hover:opacity-90 shadow-soft transition-all"
+          className="flex-1 px-10 py-5 bg-foreground text-background text-[11px] uppercase tracking-[0.25em] font-medium rounded-full hover:bg-primary hover:text-primary-foreground transition-colors duration-500"
         >
-          Add to cart ✦
+          Add to cart
         </button>
-      )}
 
-      {!inStep2 && hasCreation && (
-        <p className="text-xs text-muted-foreground text-center">
-          Continue to add your personalization.
-        </p>
-      )}
-
-      <p className="text-[10px] text-muted-foreground text-center italic leading-relaxed">
-        Preview shown for inspiration. Final handcrafted details may vary slightly.
-      </p>
+        <Link
+          to="/"
+          className="px-8 py-5 text-center text-[11px] uppercase tracking-[0.2em] text-foreground/60 hover:text-primary transition-colors"
+        >
+          Continue shopping
+        </Link>
+      </div>
     </div>
   );
 }

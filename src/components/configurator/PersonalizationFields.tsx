@@ -2,47 +2,65 @@ import { useConfigurator } from "@/lib/configurator-context";
 
 export function PersonalizationFields() {
   const { config, setFirstName, setMessage, setCustomRequests } = useConfigurator();
+
   return (
-    <div className="space-y-3">
-      <div>
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          Name — optional
-        </label>
+    <form className="space-y-7">
+      <label className="block">
+        <span className="text-[10px] uppercase tracking-[0.25em] font-semibold text-foreground/70 block mb-2.5">
+          Name
+        </span>
+
         <input
           type="text"
           value={config.firstName}
           onChange={(e) => setFirstName(e.target.value)}
           maxLength={30}
-          placeholder="E.g. Emma"
-          className="mt-1 w-full rounded-lg border border-input bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          placeholder="Louise"
+          className="w-full bg-transparent border-b border-primary/20 px-1 py-3 text-base font-display italic placeholder:text-foreground/25 focus:outline-none focus:border-primary transition-colors duration-300"
         />
-      </div>
-      <div>
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          Gift message — optional
-        </label>
+
+        <span className="text-[11px] italic text-foreground/40 mt-1.5 block">
+          Add the name to include on the gift.
+        </span>
+      </label>
+
+      <label className="block">
+        <span className="text-[10px] uppercase tracking-[0.25em] font-semibold text-foreground/70 block mb-2.5">
+          Message — optional
+        </span>
+
         <textarea
           value={config.message}
           onChange={(e) => setMessage(e.target.value)}
           maxLength={200}
-          rows={2}
-          placeholder="E.g. Happy birthday! Wishing you all the best."
-          className="mt-1 w-full rounded-lg border border-input bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+          rows={4}
+          placeholder="Happy birthday, my love."
+          className="w-full bg-transparent border-b border-primary/20 px-1 py-3 text-base font-display italic placeholder:text-foreground/25 focus:outline-none focus:border-primary transition-colors duration-300 resize-none"
         />
-      </div>
-      <div>
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+
+        <span className="text-[11px] italic text-foreground/40 mt-1.5 block text-right">
+          {config.message.length} / 200
+        </span>
+      </label>
+
+      <label className="block">
+        <span className="text-[10px] uppercase tracking-[0.25em] font-semibold text-foreground/70 block mb-2.5">
           Special request — optional
-        </label>
+        </span>
+
         <textarea
           value={config.customRequests}
           onChange={(e) => setCustomRequests(e.target.value)}
           maxLength={300}
-          rows={2}
-          placeholder="E.g. Replace roses with peonies, add a small teddy bear…"
-          className="mt-1 w-full rounded-lg border border-input bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+          rows={4}
+          placeholder="Date, age, ribbon color, flowers to change, delivery note…"
+          className="w-full bg-transparent border-b border-primary/20 px-1 py-3 text-base font-display italic placeholder:text-foreground/25 focus:outline-none focus:border-primary transition-colors duration-300 resize-none"
         />
-      </div>
-    </div>
+
+        <span className="text-[11px] italic text-foreground/40 mt-1.5 block">
+          Include any detail you want us to consider.
+        </span>
+      </label>
+    </form>
   );
 }
