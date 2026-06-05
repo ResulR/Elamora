@@ -1,16 +1,46 @@
 import { useConfigurator } from "@/lib/configurator-context";
+import { openGlobalCart } from "@/lib/cart-storage";
 import { formatPrice } from "@/lib/format";
 
-/**
- * Pure summary card — no direct /checkout CTA.
- * The only path to checkout is through CartDrawer.
- * On desktop step 2, this card shows below ConfiguratorPanel and offers
- * an "Add to cart" button to open the CartDrawer.
- */
-export function OrderSummary() {
-  const { config, selectedDesign, configMode, mobileStep, totalPrice, setCartOpen } = useConfigurator();
+function scrollToConfigureTop() {
+  setTimeout(() => {
+    document.getElementById("configure-top")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, 50);
+}
 
-  // ── Custom request mode ────────────────────────────────────────────────────
+export function OrderSummary() {
+  const {
+    config, selectedDesign, configMode, mobileStep, totalPrice,
+    cartCount, cartTotalCents,
+    addToCart, setDesign, setFirstName, setMessage, setCustomRequests,
+    setMobileStep,
+  } = useConfigurator();
+
+  const handleAddToCart = () => {
+    if (!selectedDesign) return;
+    addToCart({
+      id: crypto.randomUUID(),
+      designId:       selectedDesign.id,
+      creationName:   selectedDesign.name,
+      imageUrl:       selectedDesign.imageUrl,
+      basePriceCents: selectedDesign.basePriceCents,
+      bucketId:       config.bucketId,
+      firstName:      config.firstName,
+      message:        config.message,
+      customRequests: config.customRequests,
+    });
+    setDesign(null);
+    setFirstName("");
+    setMessage("");
+    setCustomRequests("");
+    setMobileStep("creation");
+    scrollToConfigureTop();
+  };
+
+  // ── Custom request mode ──────────────────────────────────────────────────────
   if (configMode === "custom") {
     const hasRequest = config.customRequests.trim().length > 0;
     return (
@@ -49,21 +79,39 @@ export function OrderSummary() {
     );
   }
 
-  // ── Our creations mode ─────────────────────────────────────────────────────
+  // ── Our creations mode ───────────────────────────────────────────────────────
   const hasCreation = !!selectedDesign;
   const inStep2     = mobileStep === "personalize";
 
   return (
-    <div className="bg-surface/80 border border-border/60 rounded-2xl p-5 shadow-soft sticky top-20">
-      <h3 className="font-display text-lg mb-4">Order summary</h3>
+    <div className="bg-surface/80 border border-border/60 rounded-2xl p-5 shadow-soft sticky top-20 space-y-4">
+
+      {/* Cart indicator — desktop */}
+      {cartCount > 0 && (
+        <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-primary-soft/25 border border-primary/15">
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-primary font-semibold">Cart</p>
+            <p className="text-sm font-medium text-foreground">
+              {cartCount} creation{cartCount > 1 ? "s" : ""} · {formatPrice(cartTotalCents)}
+            </p>
+          </div>
+          <button
+            onClick={() => openGlobalCart()}
+            className="text-xs px-3 py-1.5 rounded-full bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity"
+          >
+            View →
+          </button>
+        </div>
+      )}
+
+      <h3 className="font-display text-lg">Order summary</h3>
 
       {!hasCreation ? (
         <p className="text-sm text-muted-foreground py-2">
           Your composition will appear here once you choose a creation.
         </p>
       ) : (
-        <div className="space-y-3 mb-4">
-          {/* Selected creation */}
+        <div className="space-y-3">
           <div className="pb-3 border-b border-border/60">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -73,43 +121,40 @@ export function OrderSummary() {
               <span className="text-sm text-muted-foreground flex-shrink-0">{formatPrice(totalPrice)}</span>
             </div>
           </div>
-          {/* Personalization */}
           {(config.firstName || config.message || config.customRequests) && (
             <div className="space-y-1 text-xs text-muted-foreground">
-              {config.firstName    && <p><span className="text-foreground/60">Name:</span> {config.firstName}</p>}
-              {config.message      && <p className="line-clamp-2"><span className="text-foreground/60">Message:</span> {config.message}</p>}
+              {config.firstName     && <p><span className="text-foreground/60">Name:</span> {config.firstName}</p>}
+              {config.message       && <p className="line-clamp-2"><span className="text-foreground/60">Message:</span> {config.message}</p>}
               {config.customRequests && <p className="line-clamp-2"><span className="text-foreground/60">Special request:</span> {config.customRequests}</p>}
             </div>
           )}
         </div>
       )}
 
-      {/* Total */}
       {hasCreation && (
-        <div className="border-t border-border pt-3 flex justify-between font-display text-lg mb-4">
+        <div className="border-t border-border pt-3 flex justify-between font-display text-lg">
           <span>Total</span>
           <span className="text-primary">{formatPrice(totalPrice)}</span>
         </div>
       )}
 
-      {/* Add to cart — shown on desktop in step 2 only */}
+      {/* Add to cart — desktop step 2 */}
       {inStep2 && hasCreation && (
         <button
-          onClick={() => setCartOpen(true)}
+          onClick={handleAddToCart}
           className="w-full px-4 py-3 rounded-full font-medium text-sm bg-primary text-primary-foreground hover:opacity-90 shadow-soft transition-all"
         >
-          Add to cart
+          Add to cart ✦
         </button>
       )}
 
-      {/* Step 1: guide */}
       {!inStep2 && hasCreation && (
         <p className="text-xs text-muted-foreground text-center">
-          Continue to add personalization.
+          Continue to add your personalization.
         </p>
       )}
 
-      <p className="mt-3 text-[10px] text-muted-foreground text-center italic leading-relaxed">
+      <p className="text-[10px] text-muted-foreground text-center italic leading-relaxed">
         Preview shown for inspiration. Final handcrafted details may vary slightly.
       </p>
     </div>

@@ -1,5 +1,5 @@
 import { useConfigurator } from "@/lib/configurator-context";
-import { saveConfiguration } from "@/lib/configuration-storage";
+import { openGlobalCart } from "@/lib/cart-storage";
 import { formatPrice } from "@/lib/format";
 
 function scrollToPanel() {
@@ -21,40 +21,62 @@ function scrollToConfigureTop() {
 }
 
 /**
- * Mobile sticky bar — single button, four states in order of priority:
+ * Mobile sticky bar — two independent zones:
  *
- *  1. cartAdded + step1     → "View cart"         → open CartDrawer
- *  2. step2 "personalize"   → "Add to cart"        → save + cartAdded + back to step1
- *  3. hasCreation + step1   → "Continue"           → advance to step2
- *  4. !hasCreation + step1  → "Select a creation"  → disabled
+ * LEFT  → persistent cart badge (visible whenever cartItems.length > 0)
+ *          Shows: "N items · €XX  [View]"
+ *          Never replaces the right-side CTA.
  *
- * "View cart" only appears AFTER a creation has been added (cartAdded = true)
- * AND while the user is back on step1 — never while they haven't yet selected anything.
+ * RIGHT → step-contextual CTA (never replaced by "View cart")
+ *   step1, no creation  → "Select a creation"  (disabled)
+ *   step1, has creation → "Continue"
+ *   step2               → "Add to cart"
+ *   custom mode         → "Contact us" (disabled)
  */
 export function StickyCheckoutBar() {
   const {
     configMode,
     mobileStep, setMobileStep,
-    cartAdded, setCartAdded,
-    setCartOpen,
-    selectedDesign,
-    config,
-    totalPrice,
-    findCatalogProduct,
+    cartCount, cartTotalCents,
+    selectedDesign, config,
+    addToCart, setDesign, setFirstName, setMessage, setCustomRequests,
   } = useConfigurator();
 
   const hasCreation = !!selectedDesign;
   const isStep1     = mobileStep === "creation";
   const isStep2     = mobileStep === "personalize";
 
+  // ── Cart badge (left side) — always uses cartCount, never the flow state ──
+  const CartBadge = () => {
+    if (cartCount === 0) return null;
+    return (
+      <button
+        onClick={() => openGlobalCart()}
+        className="flex items-center gap-1.5 text-left"
+      >
+        <span className="text-xs text-muted-foreground">Cart</span>
+        <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold">
+          {cartCount}
+        </span>
+        <span className="font-display text-sm leading-none text-foreground">
+          {formatPrice(cartTotalCents)}
+        </span>
+        <span className="text-xs text-primary font-medium ml-0.5">View →</span>
+      </button>
+    );
+  };
+
   // ── Custom request mode ──────────────────────────────────────────────────────
   if (configMode === "custom") {
     return (
       <div className="lg:hidden fixed bottom-0 inset-x-0 z-30 border-t border-border bg-background/95 backdrop-blur-md px-4 py-3 flex items-center justify-between gap-3 shadow-elevated">
-        <div>
-          <p className="text-xs text-muted-foreground">Price</p>
-          <p className="font-display text-base leading-none text-muted-foreground italic">On request</p>
-        </div>
+        <CartBadge />
+        {cartCount === 0 && (
+          <div>
+            <p className="text-xs text-muted-foreground">Price</p>
+            <p className="font-display text-base leading-none text-muted-foreground italic">On request</p>
+          </div>
+        )}
         <span className="px-5 py-3 rounded-full text-sm font-medium bg-muted text-muted-foreground cursor-not-allowed">
           Contact us
         </span>
@@ -62,46 +84,44 @@ export function StickyCheckoutBar() {
     );
   }
 
-  // ── State 1: "View cart" — only after item added AND back on step1 ───────────
-  if (cartAdded && isStep1) {
-    return (
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-30 border-t border-border bg-background/95 backdrop-blur-md px-4 py-3 flex items-center justify-between gap-3 shadow-elevated">
-        <div>
-          <p className="text-xs text-muted-foreground">Cart</p>
-          <p className="font-display text-lg leading-none">{formatPrice(totalPrice)}</p>
-        </div>
-        <button
-          onClick={() => setCartOpen(true)}
-          className="px-5 py-3 rounded-full text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all"
-        >
-          View cart
-        </button>
-      </div>
-    );
-  }
-
-  // ── State 2: "Add to cart" — step2 (personalize) ────────────────────────────
+  // ── Step 2: Add to cart ──────────────────────────────────────────────────────
   if (isStep2) {
-    const bucket = findCatalogProduct(config.bucketId);
-
     const handleAddToCart = () => {
-      if (!hasCreation) return;
-      if (bucket) saveConfiguration(config);
-      setCartAdded(true);
+      if (!hasCreation || !selectedDesign) return;
+      addToCart({
+        id: crypto.randomUUID(),
+        designId:       selectedDesign.id,
+        creationName:   selectedDesign.name,
+        imageUrl:       selectedDesign.imageUrl,
+        basePriceCents: selectedDesign.basePriceCents,
+        bucketId:       config.bucketId,
+        firstName:      config.firstName,
+        message:        config.message,
+        customRequests: config.customRequests,
+      });
+      setDesign(null);
+      setFirstName("");
+      setMessage("");
+      setCustomRequests("");
       setMobileStep("creation");
       scrollToConfigureTop();
     };
 
     return (
       <div className="lg:hidden fixed bottom-0 inset-x-0 z-30 border-t border-border bg-background/95 backdrop-blur-md px-4 py-3 flex items-center justify-between gap-3 shadow-elevated">
-        <div>
-          <p className="text-xs text-muted-foreground">Total</p>
-          <p className="font-display text-lg leading-none">{formatPrice(totalPrice)}</p>
-        </div>
+        <CartBadge />
+        {cartCount === 0 && (
+          <div>
+            <p className="text-xs text-muted-foreground">Item</p>
+            <p className="font-display text-sm leading-none truncate max-w-[120px]">
+              {selectedDesign?.name ?? "—"}
+            </p>
+          </div>
+        )}
         <button
           onClick={handleAddToCart}
           disabled={!hasCreation}
-          className={`px-5 py-3 rounded-full text-sm font-medium transition-all ${
+          className={`px-5 py-3 rounded-full text-sm font-medium transition-all flex-shrink-0 ${
             hasCreation
               ? "bg-primary text-primary-foreground hover:opacity-90"
               : "bg-muted text-muted-foreground cursor-not-allowed"
@@ -113,7 +133,7 @@ export function StickyCheckoutBar() {
     );
   }
 
-  // ── State 3 & 4: step1 — "Continue" or "Select a creation" ──────────────────
+  // ── Step 1: Continue or Select a creation ────────────────────────────────────
   const handleContinue = () => {
     if (!hasCreation) return;
     setMobileStep("personalize");
@@ -122,14 +142,17 @@ export function StickyCheckoutBar() {
 
   return (
     <div className="lg:hidden fixed bottom-0 inset-x-0 z-30 border-t border-border bg-background/95 backdrop-blur-md px-4 py-3 flex items-center justify-between gap-3 shadow-elevated">
-      <div>
-        <p className="text-xs text-muted-foreground">Total</p>
-        <p className="font-display text-lg leading-none">{formatPrice(totalPrice)}</p>
-      </div>
+      <CartBadge />
+      {cartCount === 0 && (
+        <div>
+          <p className="text-xs text-muted-foreground">Total</p>
+          <p className="font-display text-lg leading-none">{formatPrice(0)}</p>
+        </div>
+      )}
       <button
         onClick={handleContinue}
         disabled={!hasCreation}
-        className={`px-5 py-3 rounded-full text-sm font-medium transition-all ${
+        className={`px-5 py-3 rounded-full text-sm font-medium transition-all flex-shrink-0 ${
           hasCreation
             ? "bg-primary text-primary-foreground hover:opacity-90"
             : "bg-muted text-muted-foreground cursor-not-allowed"

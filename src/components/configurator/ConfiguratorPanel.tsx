@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useConfigurator, type ConfigMode } from "@/lib/configurator-context";
-import { saveConfiguration } from "@/lib/configuration-storage";
 import { CreationSelector } from "./CreationSelector";
 import { CustomRequestForm } from "./CustomRequestForm";
 import { PersonalizationFields } from "./PersonalizationFields";
@@ -96,7 +95,7 @@ export function ConfiguratorPanel() {
     configMode, setConfigMode,
     mobileStep, setMobileStep,
     selectedDesign, config,
-    setCartAdded,
+    addToCart, setDesign, setFirstName, setMessage, setCustomRequests,
   } = useConfigurator();
 
   const hasCreation = !!selectedDesign;
@@ -111,13 +110,29 @@ export function ConfiguratorPanel() {
   }, [successMsg]);
 
   const handleAddToCart = () => {
-    if (!hasCreation) return;
-    saveConfiguration(config);
-    setCartAdded(true);
+    if (!hasCreation || !selectedDesign) return;
+
+    // Build a CartItem from the current selection + personalization
+    addToCart({
+      id: crypto.randomUUID(),
+      designId:       selectedDesign.id,
+      creationName:   selectedDesign.name,
+      imageUrl:       selectedDesign.imageUrl,
+      basePriceCents: selectedDesign.basePriceCents,
+      bucketId:       config.bucketId,
+      firstName:      config.firstName,
+      message:        config.message,
+      customRequests: config.customRequests,
+    });
+
+    // Reset the current form so the user can configure another creation
+    setDesign(null);
+    setFirstName("");
+    setMessage("");
+    setCustomRequests("");
+
     setSuccessMsg("Your creation has been added to the cart.");
     setMobileStep("creation");
-    // scrollToConfigureTop uses setTimeout(50ms) so React finishes updating
-    // the DOM (step reset + success message) before the scroll fires.
     scrollToConfigureTop();
   };
 

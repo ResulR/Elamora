@@ -39,101 +39,100 @@
   --color-surface: var(--surface);
   --color-surface-elevated: var(--surface-elevated);
 
-  --font-display: "Fraunces", "Cormorant Garamond", Georgia, serif;
+  /* Cormorant Garamond — high-contrast elegant serif, primary display */
+  /* Fraunces as refined backup, Georgia as final serif fallback */
+  --font-display: "Cormorant Garamond", "Fraunces", Georgia, serif;
   --font-sans: "Inter", system-ui, sans-serif;
 
-  /* Pink rose gold shadows */
-  --shadow-soft: 0 1px 2px oklch(0.20 0.04 15 / 0.05), 0 4px 12px oklch(0.20 0.04 15 / 0.07);
-  --shadow-elevated: 0 4px 12px oklch(0.20 0.04 15 / 0.07), 0 16px 40px oklch(0.20 0.04 15 / 0.10);
-  --shadow-bloom: 0 30px 60px -20px oklch(0.54 0.13 15 / 0.30);
+  /* Warm rose shadows */
+  --shadow-soft:     0 1px 2px oklch(0.22 0.06 15 / 0.06), 0 4px 14px oklch(0.22 0.06 15 / 0.08);
+  --shadow-elevated: 0 4px 14px oklch(0.22 0.06 15 / 0.08), 0 18px 44px oklch(0.22 0.06 15 / 0.11);
+  --shadow-bloom:    0 32px 64px -20px oklch(0.52 0.17 15 / 0.32);
 }
 
 :root {
-  --radius: 0.875rem;
+  --radius: 1rem;
 
   /* ── Elamora Pink Rose Gold Boutique ────────────────────────────────────
-     Romantic boutique palette.
-     Background: warm blush ivory  #FFF3F1
-     Cards:      soft pink-white   #FFF9F7
-     Primary:    dusty rose CTA    #B85F68
-     Foreground: deep rose-brown   #2E1719
-     Accent:     champagne gold    #D8A76F         */
+     Inspired by the reference boutique screenshots.
+     Clearly pink cream background — no ambiguity.
+     Deep rose primary for decisive CTAs.
+     Champagne accent for rose gold touches.       */
 
-  /* Warm blush ivory — pink cream background */
-  --background: oklch(0.977 0.008 15);
-  /* Deep rose-brown — legible and warm */
-  --foreground: oklch(0.18 0.04 15);
+  /* Clearly pink-cream — visible blush tint */
+  --background: oklch(0.970 0.020 15);
+  /* Deep rose-brown foreground — warm, legible */
+  --foreground: oklch(0.17 0.045 15);
 
-  /* Soft pink-white card surfaces */
-  --surface: oklch(0.994 0.004 15);
-  --surface-elevated: oklch(0.994 0.004 15);
+  /* Near-white card surfaces — float above the pink bg */
+  --surface:          oklch(0.993 0.006 15);
+  --surface-elevated: oklch(0.996 0.004 15);
 
-  --card: oklch(0.992 0.005 15);
-  --card-foreground: oklch(0.18 0.04 15);
-  --popover: oklch(0.994 0.004 15);
-  --popover-foreground: oklch(0.18 0.04 15);
+  --card:             oklch(0.991 0.007 15);
+  --card-foreground:  oklch(0.17 0.045 15);
+  --popover:          oklch(0.993 0.006 15);
+  --popover-foreground: oklch(0.17 0.045 15);
 
-  /* Dusty rose / deep blush pink primary */
-  --primary: oklch(0.54 0.13 15);
-  --primary-foreground: oklch(0.997 0.003 15);
-  /* Soft blush — tints, hover, selected states */
-  --primary-soft: oklch(0.92 0.04 15);
+  /* Rich rose primary — decisive, boutique-forward */
+  --primary:            oklch(0.52 0.17 15);
+  --primary-foreground: oklch(0.998 0.003 15);
+  /* Soft blush for tints & selected states */
+  --primary-soft:       oklch(0.91 0.05 15);
 
-  --secondary: oklch(0.96 0.012 15);
-  --secondary-foreground: oklch(0.26 0.04 15);
+  --secondary:            oklch(0.955 0.022 15);
+  --secondary-foreground: oklch(0.24 0.05 15);
 
-  /* Warm pink-blush muted backgrounds */
-  --muted: oklch(0.96 0.012 15);
-  /* Warm rose-mauve text */
-  --muted-foreground: oklch(0.48 0.05 15);
+  /* Visible pink muted backgrounds */
+  --muted:             oklch(0.950 0.024 15);
+  /* Warm rose-taupe muted text */
+  --muted-foreground:  oklch(0.50 0.07 15);
 
-  /* Champagne / rose gold warm accent */
-  --accent: oklch(0.76 0.07 62);
-  --accent-foreground: oklch(0.22 0.05 40);
+  /* Champagne / rose gold accent */
+  --accent:            oklch(0.75 0.08 60);
+  --accent-foreground: oklch(0.20 0.06 38);
 
-  --destructive: oklch(0.58 0.22 22);
+  --destructive:            oklch(0.56 0.22 22);
   --destructive-foreground: oklch(0.99 0.003 20);
 
-  --success: oklch(0.66 0.13 150);
+  --success:            oklch(0.64 0.14 150);
   --success-foreground: oklch(0.99 0.003 150);
 
-  --warning: oklch(0.78 0.13 72);
-  --warning-foreground: oklch(0.24 0.04 38);
+  --warning:            oklch(0.77 0.13 72);
+  --warning-foreground: oklch(0.23 0.04 38);
 
-  /* Blush pink borders — warm and soft */
-  --border: oklch(0.88 0.03 15);
-  --input: oklch(0.93 0.018 15);
-  /* Ring matches primary */
-  --ring: oklch(0.54 0.13 15);
+  /* Blush pink borders — clearly tinted */
+  --border: oklch(0.865 0.042 15);
+  --input:  oklch(0.925 0.025 15);
+  --ring:   oklch(0.52 0.17 15);
 }
 
 .dark {
-  --background: oklch(0.17 0.03 15);
+  --background: oklch(0.16 0.03 15);
   --foreground: oklch(0.94 0.01 15);
-  --surface: oklch(0.21 0.03 15);
-  --surface-elevated: oklch(0.24 0.03 15);
-  --card: oklch(0.21 0.03 15);
+  --surface: oklch(0.20 0.03 15);
+  --surface-elevated: oklch(0.23 0.03 15);
+  --card: oklch(0.20 0.03 15);
   --card-foreground: oklch(0.94 0.01 15);
-  --popover: oklch(0.21 0.03 15);
+  --popover: oklch(0.20 0.03 15);
   --popover-foreground: oklch(0.94 0.01 15);
-  --primary: oklch(0.70 0.12 15);
-  --primary-foreground: oklch(0.17 0.03 15);
-  --primary-soft: oklch(0.30 0.06 15);
-  --secondary: oklch(0.27 0.03 15);
+  --primary: oklch(0.70 0.14 15);
+  --primary-foreground: oklch(0.16 0.03 15);
+  --primary-soft: oklch(0.28 0.07 15);
+  --secondary: oklch(0.26 0.03 15);
   --secondary-foreground: oklch(0.94 0.01 15);
-  --muted: oklch(0.25 0.025 15);
-  --muted-foreground: oklch(0.68 0.04 15);
-  --accent: oklch(0.64 0.07 62);
+  --muted: oklch(0.24 0.025 15);
+  --muted-foreground: oklch(0.68 0.045 15);
+  --accent: oklch(0.63 0.08 60);
   --accent-foreground: oklch(0.94 0.01 15);
-  --destructive: oklch(0.65 0.2 22);
+  --destructive: oklch(0.64 0.2 22);
   --destructive-foreground: oklch(0.99 0.003 20);
-  --success: oklch(0.7 0.13 150);
-  --success-foreground: oklch(0.15 0.015 150);
-  --warning: oklch(0.78 0.13 72);
-  --warning-foreground: oklch(0.18 0.015 25);
-  --border: oklch(0.30 0.03 15);
-  --input: oklch(0.30 0.03 15);
-  --ring: oklch(0.70 0.12 15);
+  --success: oklch(0.69 0.13 150);
+  --success-foreground: oklch(0.14 0.015 150);
+  --warning: oklch(0.77 0.13 72);
+  --warning-foreground: oklch(0.17 0.015 25);
+  --border: oklch(0.29 0.035 15);
+  --input: oklch(0.29 0.035 15);
+  --ring: oklch(0.70 0.14 15);
 }
 
 @layer base {
@@ -142,20 +141,26 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    /* Pink rose gold gradient — blush at top, champagne whisper at bottom */
+    /* Rose boutique gradient — clearly pink at top, champagne whisper at bottom-right */
     background-image:
-      radial-gradient(ellipse 80% 50% at 50% -10%, oklch(0.93 0.04 15 / 0.55), transparent),
-      radial-gradient(ellipse 60% 40% at 100% 100%, oklch(0.76 0.07 62 / 0.18), transparent);
+      radial-gradient(ellipse 100% 55% at 50% -5%, oklch(0.91 0.055 15 / 0.65), transparent),
+      radial-gradient(ellipse 65% 45% at 100% 100%, oklch(0.75 0.08 60 / 0.16), transparent);
     background-attachment: fixed;
   }
-  h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.02em; }
+  /* Display headings — Cormorant Garamond renders best at medium weight + tight tracking */
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    font-weight: 500;
+    line-height: 1.15;
+  }
 }
 
 @layer utilities {
-  .bg-surface { background-color: var(--color-surface); }
+  .bg-surface          { background-color: var(--color-surface); }
   .bg-surface-elevated { background-color: var(--color-surface-elevated); }
-  .shadow-soft { box-shadow: var(--shadow-soft); }
-  .shadow-elevated { box-shadow: var(--shadow-elevated); }
-  .shadow-bloom { box-shadow: var(--shadow-bloom); }
-  .font-display { font-family: var(--font-display); }
+  .shadow-soft         { box-shadow: var(--shadow-soft); }
+  .shadow-elevated     { box-shadow: var(--shadow-elevated); }
+  .shadow-bloom        { box-shadow: var(--shadow-bloom); }
+  .font-display        { font-family: var(--font-display); }
 }

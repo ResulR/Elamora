@@ -5,7 +5,7 @@ import { ProductPreview } from "@/components/configurator/ProductPreview";
 import { ConfiguratorPanel } from "@/components/configurator/ConfiguratorPanel";
 import { OrderSummary } from "@/components/configurator/OrderSummary";
 import { StickyCheckoutBar } from "@/components/configurator/StickyCheckoutBar";
-import { CartDrawer } from "@/components/configurator/CartDrawer";
+// CartDrawer is now global — rendered inside AppLayout (src/components/layout/GlobalCartDrawer.tsx)
 
 export const Route = createFileRoute("/configure")({
   head: () => ({
@@ -25,7 +25,11 @@ function ConfiguratorPage() {
       <AppLayout>
         <div id="configure-top" className="max-w-7xl mx-auto px-4 sm:px-6 py-8 pb-32 lg:pb-12">
           <div className="mb-8 text-center max-w-2xl mx-auto">
-            <p className="text-xs uppercase tracking-[0.2em] text-primary mb-2">Configurator</p>
+            <div className="inline-flex items-center gap-2 mb-3">
+              <span className="text-primary text-sm">♡</span>
+              <p className="text-xs uppercase tracking-[0.25em] text-primary font-semibold">Gift Studio</p>
+              <span className="text-primary text-sm">♡</span>
+            </div>
             <h1 className="font-display text-4xl md:text-5xl text-foreground">
               Create your <span className="italic text-primary">personalized gift</span>
             </h1>
@@ -41,7 +45,6 @@ function ConfiguratorPage() {
           </div>
         </div>
         <StickyCheckoutBar />
-        <CartDrawer />
       </AppLayout>
     </ConfiguratorProvider>
   );
