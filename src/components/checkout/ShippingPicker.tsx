@@ -1,6 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { formatPrice } from "@/lib/format";
-import { fetchShippingQuote, type ShippingQuote } from "@/lib/shipping-api";
+import {
+  fetchShippingAvailability,
+  fetchShippingQuote,
+  type ShippingAvailability,
+  type ShippingQuote,
+} from "@/lib/shipping-api";
 
 export interface ShippingFormState {
   deliveryMethod: "pickup" | "delivery";
@@ -10,6 +15,7 @@ export interface ShippingFormState {
   city: string;
   country: string;
   deliveryDate: string;
+  deliveryTimeSlot: string;
   deliveryInstructions: string;
   recipientPhone: string;
 }
@@ -31,12 +37,6 @@ function updateField(
   };
 }
 
-function isSunday(dateValue: string): boolean {
-  if (!dateValue) return false;
-  const date = new Date(`${dateValue}T12:00:00`);
-  return date.getDay() === 0;
-}
-
 function tomorrowDate(): string {
   const date = new Date();
   date.setDate(date.getDate() + 1);
@@ -47,16 +47,49 @@ export function ShippingPicker({ value, onChange, onQuoteChange }: ShippingPicke
   const [quote, setQuote] = useState<ShippingQuote | null>(null);
   const [isQuoteLoading, setIsQuoteLoading] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [availability, setAvailability] = useState<ShippingAvailability | null>(null);
+  const [isAvailabilityLoading, setIsAvailabilityLoading] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null);
 
   const canQuote =
     value.deliveryMethod === "delivery" &&
     value.postalCode.trim().length >= 2 &&
     value.country.trim().length === 2;
 
-  const sundaySelected = useMemo(
-    () => value.deliveryMethod === "delivery" && isSunday(value.deliveryDate),
-    [value.deliveryDate, value.deliveryMethod]
-  );
+  const sundaySelected = false;
+
+  useEffect(() => {
+    if (value.deliveryMethod !== "delivery" || !value.deliveryDate || sundaySelected) {
+      setAvailability(null);
+      setAvailabilityError(null);
+      setIsAvailabilityLoading(false);
+      return;
+    }
+
+    setIsAvailabilityLoading(true);
+    setAvailabilityError(null);
+
+    fetchShippingAvailability({
+      date: value.deliveryDate,
+      country: value.country,
+    })
+      .then((result) => {
+        setAvailability(result);
+
+        if (result.slots.length === 1 && !value.deliveryTimeSlot) {
+          onChange({ ...value, deliveryTimeSlot: result.slots[0].value });
+        }
+
+        if (value.deliveryTimeSlot && !result.slots.some((slot) => slot.value === value.deliveryTimeSlot)) {
+          onChange({ ...value, deliveryTimeSlot: "" });
+        }
+      })
+      .catch(() => {
+        setAvailability(null);
+        setAvailabilityError("Could not check delivery availability for this date.");
+      })
+      .finally(() => setIsAvailabilityLoading(false));
+  }, [onChange, sundaySelected, value]);
 
   useEffect(() => {
     if (value.deliveryMethod !== "delivery") {
@@ -200,9 +233,30 @@ export function ShippingPicker({ value, onChange, onQuoteChange }: ShippingPicke
               type="date"
               min={tomorrowDate()}
               value={value.deliveryDate}
-              onChange={(v) => onChange(updateField(value, "deliveryDate", v))}
-              className="sm:col-span-2"
+              onChange={(v) => onChange({ ...updateField(value, "deliveryDate", v), deliveryTimeSlot: "" })}
             />
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Delivery time slot
+              </label>
+              <select
+                name="deliveryTimeSlot"
+                value={value.deliveryTimeSlot}
+                disabled={!availability?.available || availability.slots.length === 0 || isAvailabilityLoading}
+                onChange={(event) => onChange(updateField(value, "deliveryTimeSlot", event.target.value))}
+                className="mt-1 w-full rounded-lg border border-input bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
+              >
+                <option value="">
+                  {isAvailabilityLoading ? "Checking slots..." : "Choose a time slot"}
+                </option>
+                {availability?.slots.map((slot) => (
+                  <option key={slot.id} value={slot.value}>
+                    {slot.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <div className="sm:col-span-2">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -225,9 +279,15 @@ export function ShippingPicker({ value, onChange, onQuoteChange }: ShippingPicke
             </div>
           </div>
 
-          {sundaySelected && (
+          {!sundaySelected && availabilityError && (
             <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              Sunday delivery is not available. Please choose another date.
+              {availabilityError}
+            </p>
+          )}
+
+          {!sundaySelected && availability && !availability.available && (
+            <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              No delivery slot is available for this date.
             </p>
           )}
 

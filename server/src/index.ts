@@ -64,6 +64,7 @@ const createOrderSchema = z.object({
     city: z.string().trim().max(120).optional().default(""),
     country: z.string().trim().min(2).max(2).optional().default("BE").transform((value) => value.toUpperCase()),
     deliveryDate: z.string().trim().max(20).optional().default(""),
+    deliveryTimeSlot: z.string().trim().max(80).optional().default(""),
     deliveryInstructions: z.string().trim().max(1000).optional().default(""),
     recipientPhone: z.string().trim().max(80).optional().default(""),
     deliveryMethod: z.enum(["pickup", "delivery"]).optional().default("pickup"),
@@ -227,6 +228,45 @@ app.get("/api/shipping/quote", publicOrderLimiter, async (req: Request, res: Res
 });
 
 
+
+const shippingAvailabilitySchema = z.object({
+  date: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
+  country: z.string().trim().min(2).max(2).optional().default("BE").transform((value) => value.toUpperCase()),
+});
+
+app.get("/api/shipping/availability", publicOrderLimiter, async (req: Request, res: Response) => {
+  const parsed = shippingAvailabilitySchema.safeParse(req.query);
+
+  if (!parsed.success) {
+    return res.status(400).json({
+      ok: false,
+      error: "Invalid shipping availability parameters",
+      details: parsed.error.flatten().fieldErrors,
+    });
+  }
+
+  const { date, country } = parsed.data;
+
+  try {
+    const availability = await getDeliveryAvailability(date, country);
+
+    return res.json({
+      ok: true,
+      available: availability.available,
+      reason: availability.reason,
+      slots: availability.slots,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      ok: false,
+      error: "Could not check shipping availability",
+    });
+  }
+});
+
+
 app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) => {
   const parsed = createOrderSchema.safeParse(req.body);
 
@@ -365,6 +405,36 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
       }
 
       shippingCents = shippingZone.price_cents;
+
+      if (payload.customer.deliveryDate) {
+        const availability = await getDeliveryAvailability(
+          payload.customer.deliveryDate,
+          country,
+          client
+        );
+
+        if (!availability.available) {
+          await client.query("ROLLBACK");
+          return res.status(400).json({
+            ok: false,
+            error: "delivery_date_unavailable",
+          });
+        }
+
+        if (payload.customer.deliveryTimeSlot) {
+          const slotExists = availability.slots.some(
+            (slot) => slot.value === payload.customer.deliveryTimeSlot
+          );
+
+          if (!slotExists) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({
+              ok: false,
+              error: "delivery_slot_unavailable",
+            });
+          }
+        }
+      }
     }
 
     const taxCents = 0;
@@ -387,6 +457,7 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
           city,
           country_code,
           delivery_date,
+          delivery_time_slot,
           delivery_instructions,
           recipient_phone,
           custom_name,
@@ -396,7 +467,7 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
           tax_cents,
           total_cents
         )
-        VALUES ($1, 'pending', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NULLIF($13, '')::date, $14, $15, $16, $17, $18, $19, $20, $21)
+        VALUES ($1, 'pending', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NULLIF($13, '')::date, $14, $15, $16, $17, $18, $19, $20, $21, $22)
         RETURNING *
       `,
       [
@@ -413,6 +484,7 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
         payload.customer.city,
         payload.customer.country,
         payload.customer.deliveryDate,
+        payload.customer.deliveryTimeSlot,
         payload.customer.deliveryInstructions,
         payload.customer.recipientPhone || payload.customer.phone,
         payload.customName,
@@ -769,6 +841,94 @@ async function createOrderReference(client: { query: typeof pool.query }): Promi
   return `ELA-${String(nextNumber).padStart(6, "0")}`;
 }
 
+
+async function getDeliveryAvailability(
+  dateValue: string,
+  countryCode: string,
+  db: { query: typeof pool.query } = pool
+): Promise<{
+  available: boolean;
+  reason: string | null;
+  slots: Array<{
+    id: string;
+    name: string;
+    value: string;
+    startTime: string;
+    endTime: string;
+  }>;
+}> {
+  const date = new Date(`${dateValue}T12:00:00Z`);
+
+  if (Number.isNaN(date.getTime())) {
+    return { available: false, reason: "invalid_date", slots: [] };
+  }
+
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  const requested = new Date(`${dateValue}T00:00:00Z`);
+
+  if (requested < today) {
+    return { available: false, reason: "past_date", slots: [] };
+  }
+
+  const blackoutResult = await db.query(
+    `
+      SELECT reason
+      FROM delivery_blackout_dates
+      WHERE is_active = true
+        AND blackout_date = $1::date
+        AND (country_code IS NULL OR country_code = $2)
+      ORDER BY country_code NULLS LAST
+      LIMIT 1
+    `,
+    [dateValue, countryCode]
+  );
+
+  const blackout = blackoutResult.rows[0];
+
+  if (blackout) {
+    return {
+      available: false,
+      reason: blackout.reason || "blackout_date",
+      slots: [],
+    };
+  }
+
+  const dayOfWeek = requested.getUTCDay();
+
+  const slotsResult = await db.query(
+    `
+      SELECT
+        id,
+        name,
+        start_time,
+        end_time
+      FROM delivery_time_slots
+      WHERE is_active = true
+        AND day_of_week = $1
+        AND (country_code IS NULL OR country_code = $2)
+      ORDER BY country_code NULLS LAST, sort_order ASC, start_time ASC
+    `,
+    [dayOfWeek, countryCode]
+  );
+
+  const slots = slotsResult.rows.map((row: any) => ({
+    id: row.id,
+    name: row.name,
+    value: row.name,
+    startTime: String(row.start_time).slice(0, 5),
+    endTime: String(row.end_time).slice(0, 5),
+  }));
+
+  return {
+    available: slots.length > 0,
+    reason: slots.length > 0 ? null : "no_delivery_slots",
+    slots,
+  };
+}
+
+
 function mapOrderRow(row: any) {
   return {
     id: row.id,
@@ -786,6 +946,7 @@ function mapOrderRow(row: any) {
       city: row.city ?? "",
       country: row.country_code ?? "",
       deliveryDate: row.delivery_date ?? "",
+      deliveryTimeSlot: row.delivery_time_slot ?? "",
       deliveryInstructions: row.delivery_instructions ?? "",
       recipientPhone: row.recipient_phone ?? "",
       deliveryMethod: row.delivery_method ?? "pickup",

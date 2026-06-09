@@ -34,15 +34,10 @@ const initialShipping: ShippingFormState = {
   city: "",
   country: "BE",
   deliveryDate: "",
+  deliveryTimeSlot: "",
   deliveryInstructions: "",
   recipientPhone: "",
 };
-
-function isSunday(dateValue: string): boolean {
-  if (!dateValue) return false;
-  const date = new Date(`${dateValue}T12:00:00`);
-  return date.getDay() === 0;
-}
 
 function CheckoutPage() {
   const [cartItems, setCartItems]       = useState<CartItem[]>([]);
@@ -92,7 +87,7 @@ function CheckoutPage() {
     if (!shipping.addressLine1.trim()) return false;
     if (!shipping.postalCode.trim()) return false;
     if (!shipping.city.trim()) return false;
-    if (shipping.deliveryDate && isSunday(shipping.deliveryDate)) return false;
+    if (shipping.deliveryDate && !shipping.deliveryTimeSlot) return false;
     return Boolean(shippingQuote?.available);
   }, [shipping, shippingQuote]);
 
@@ -141,6 +136,7 @@ function CheckoutPage() {
           city: shipping.city.trim(),
           country: shipping.country.trim().toUpperCase(),
           deliveryDate: shipping.deliveryDate,
+          deliveryTimeSlot: shipping.deliveryTimeSlot,
           deliveryInstructions: shipping.deliveryInstructions.trim(),
           recipientPhone: shipping.recipientPhone.trim() || phone,
           deliveryMethod: shipping.deliveryMethod,

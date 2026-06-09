@@ -40,3 +40,51 @@ export async function fetchShippingQuote(params: {
     zoneName: data.zone_name ?? null,
   };
 }
+
+export interface ShippingAvailabilitySlot {
+  id: string;
+  name: string;
+  value: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface ShippingAvailability {
+  available: boolean;
+  reason: string | null;
+  slots: ShippingAvailabilitySlot[];
+}
+
+interface ShippingAvailabilityResponse {
+  ok: boolean;
+  available?: boolean;
+  reason?: string | null;
+  slots?: ShippingAvailabilitySlot[];
+  error?: string;
+}
+
+export async function fetchShippingAvailability(params: {
+  date: string;
+  country: string;
+}): Promise<ShippingAvailability> {
+  const search = new URLSearchParams({
+    date: params.date.trim(),
+    country: params.country.trim().toUpperCase(),
+  });
+
+  const response = await fetch(`/api/shipping/availability?${search.toString()}`, {
+    method: "GET",
+  });
+
+  const data = (await response.json().catch(() => null)) as ShippingAvailabilityResponse | null;
+
+  if (!response.ok || !data?.ok) {
+    throw new Error(data?.error || "Could not check delivery availability");
+  }
+
+  return {
+    available: Boolean(data.available),
+    reason: data.reason ?? null,
+    slots: data.slots ?? [],
+  };
+}

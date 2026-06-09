@@ -28,6 +28,7 @@ export interface ApiOrder {
     city?: string;
     country?: string;
     deliveryDate?: string;
+    deliveryTimeSlot?: string;
     deliveryInstructions?: string;
     recipientPhone?: string;
     deliveryMethod: "pickup" | "delivery";
@@ -57,6 +58,7 @@ export interface CreateOrderPayload {
     city?: string;
     country?: string;
     deliveryDate?: string;
+    deliveryTimeSlot?: string;
     deliveryInstructions?: string;
     recipientPhone?: string;
     deliveryMethod: "pickup" | "delivery";
