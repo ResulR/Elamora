@@ -75,20 +75,11 @@ function CheckoutPage() {
       // Build items[] from all cart items' bucketId
       const orderItems = cartItems
         .filter((item) => item.bucketId)
-        .map((item) => {
-          const product = catalog.allProducts.find((p) => p.id === item.bucketId);
-          return {
-            productId:      item.bucketId,
-            productName:    item.creationName,
-            unitPriceCents: item.basePriceCents > 0
-              ? item.basePriceCents
-              : (product?.price ?? 0),
-            quantity: 1,
-            colorId:    null,
-            colorName:  "",
-            colorHex:   "",
-          };
-        });
+        .map((item) => ({
+          productId: item.bucketId,
+          quantity: 1,
+          colorId: null,
+        }));
 
       if (orderItems.length === 0) {
         setSubmitError("No valid products found. Please go back and choose a creation.");

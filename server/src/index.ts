@@ -66,12 +66,8 @@ const createOrderSchema = z.object({
     .array(
       z.object({
         productId: z.string().uuid(),
-        productName: z.string().trim().min(1).max(255).optional().default(""),
-        unitPriceCents: z.number().int().min(0).max(1_000_000).optional().default(0),
         quantity: z.number().int().min(1).max(99).default(1),
         colorId: z.string().uuid().nullable().optional().default(null),
-        colorName: z.string().trim().max(120).optional().default(""),
-        colorHex: z.string().trim().max(40).optional().default(""),
       })
     )
     .min(1)
@@ -184,8 +180,8 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
       let productName = "";
       let unitPriceCents = 0;
       let colorId = item.colorId;
-      let colorName = item.colorName || null;
-      let colorHex = item.colorHex || null;
+      let colorName = null;
+      let colorHex = null;
 
       const productResult = await client.query(
         `

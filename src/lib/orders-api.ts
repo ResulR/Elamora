@@ -45,13 +45,9 @@ export interface CreateOrderPayload {
   customName: string;
   customMessage: string;
   items: Array<{
-    productId?: string | null;
-    productName: string;
-    unitPriceCents: number;
+    productId: string;
     quantity: number;
     colorId?: string | null;
-    colorName?: string;
-    colorHex?: string;
   }>;
 }
 
