@@ -154,6 +154,71 @@ app.get("/api/catalog", async (_req: Request, res: Response) => {
 });
 
 
+const shippingQuoteSchema = z.object({
+  postalCode: z.string().trim().min(2).max(20),
+  country: z.string().trim().min(2).max(2).transform((value) => value.toUpperCase()),
+});
+
+app.get("/api/shipping/quote", publicOrderLimiter, async (req: Request, res: Response) => {
+  const parsed = shippingQuoteSchema.safeParse(req.query);
+
+  if (!parsed.success) {
+    return res.status(400).json({
+      ok: false,
+      error: "Invalid shipping quote parameters",
+      details: parsed.error.flatten().fieldErrors,
+    });
+  }
+
+  const { postalCode, country } = parsed.data;
+
+  try {
+    const result = await pool.query(
+      `
+        SELECT
+          name,
+          price_cents,
+          lead_time_days
+        FROM delivery_zones
+        WHERE is_active = true
+          AND country_code = $1
+          AND $2 ~ postal_pattern
+        ORDER BY price_cents ASC, lead_time_days ASC, name ASC
+        LIMIT 1
+      `,
+      [country, postalCode]
+    );
+
+    const zone = result.rows[0];
+
+    if (!zone) {
+      return res.json({
+        ok: true,
+        available: false,
+        shipping_cents: 0,
+        lead_time_days: null,
+        zone_name: null,
+      });
+    }
+
+    return res.json({
+      ok: true,
+      available: true,
+      shipping_cents: zone.price_cents,
+      lead_time_days: zone.lead_time_days,
+      zone_name: zone.name,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      ok: false,
+      error: "Could not calculate shipping quote",
+    });
+  }
+});
+
+
 app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) => {
   const parsed = createOrderSchema.safeParse(req.body);
 
