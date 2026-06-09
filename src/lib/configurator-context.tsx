@@ -93,9 +93,23 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError,   setCatalogError]   = useState<string | null>(null);
 
-  // Load cart from localStorage on mount
+  // Load cart from localStorage on mount and keep in sync across tabs.
   useEffect(() => {
-    setCartItems(loadCartItems());
+    const refreshCart = () => setCartItems(loadCartItems());
+
+    refreshCart();
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === "elamora_cart_items") refreshCart();
+    };
+
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("elamora-cart-updated", refreshCart);
+
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("elamora-cart-updated", refreshCart);
+    };
   }, []);
 
   // Load catalog

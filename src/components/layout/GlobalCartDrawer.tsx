@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  CART_KEY,
   type CartItem,
   loadCartItems,
   removeCartItem,
@@ -29,14 +30,19 @@ export function GlobalCartDrawer() {
 
     // Open via event (PublicHeader, OrderSummary, StickyCheckoutBar → openGlobalCart())
     const handleOpen = () => { setOpen(true); refresh(); };
-    // Refresh count/items whenever cart changes
+    // Refresh count/items whenever cart changes in this tab or another tab.
     const handleUpdate = () => refresh();
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === CART_KEY) refresh();
+    };
 
     window.addEventListener("elamora-open-cart",    handleOpen);
     window.addEventListener("elamora-cart-updated", handleUpdate);
+    window.addEventListener("storage",              handleStorage);
     return () => {
       window.removeEventListener("elamora-open-cart",    handleOpen);
       window.removeEventListener("elamora-cart-updated", handleUpdate);
+      window.removeEventListener("storage",              handleStorage);
     };
   }, [refresh]);
 

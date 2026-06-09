@@ -18,7 +18,64 @@ export type CartItem = {
   customRequests: string;
 };
 
-const CART_KEY = "elamora_cart_items";
+export const CART_KEY = "elamora_cart_items";
+
+function asString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function asNullableString(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function asSafePriceCents(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(Math.trunc(value), 1_000_000));
+}
+
+function normalizeCartItem(value: unknown): CartItem | null {
+  if (!value || typeof value !== "object") return null;
+
+  const item = value as Partial<CartItem>;
+
+  const id = asString(item.id);
+  const designId = asString(item.designId);
+  const creationName = asString(item.creationName);
+  const bucketId = asNullableString(item.bucketId);
+
+  if (!id || !designId || !creationName || !bucketId) {
+    return null;
+  }
+
+  return {
+    id,
+    designId,
+    creationName,
+    imageUrl: asString(item.imageUrl),
+    basePriceCents: asSafePriceCents(item.basePriceCents),
+    bucketId,
+    firstName: asString(item.firstName),
+    message: asString(item.message),
+    customRequests: asString(item.customRequests),
+  };
+}
+
+function normalizeCartItems(value: unknown): CartItem[] {
+  if (!Array.isArray(value)) return [];
+
+  const seen = new Set<string>();
+  const items: CartItem[] = [];
+
+  for (const rawItem of value) {
+    const item = normalizeCartItem(rawItem);
+    if (!item || seen.has(item.id)) continue;
+
+    seen.add(item.id);
+    items.push(item);
+  }
+
+  return items.slice(0, 50);
+}
 
 // ── Read ──────────────────────────────────────────────────────────────────────
 
@@ -26,7 +83,7 @@ export function loadCartItems(): CartItem[] {
   try {
     const raw = window.localStorage.getItem(CART_KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as CartItem[];
+    return normalizeCartItems(JSON.parse(raw));
   } catch {
     return [];
   }
@@ -50,16 +107,19 @@ export function openGlobalCart() {
 
 export function saveCartItems(items: CartItem[]): void {
   try {
-    window.localStorage.setItem(CART_KEY, JSON.stringify(items));
+    window.localStorage.setItem(CART_KEY, JSON.stringify(normalizeCartItems(items)));
     dispatchCartUpdated();
   } catch {}
 }
 
 export function addCartItem(item: CartItem): CartItem[] {
   const current = loadCartItems();
-  const updated = [...current, item];
-  saveCartItems(updated);   // saveCartItems already dispatches
-  return updated;
+  const safeItem = normalizeCartItem(item);
+  if (!safeItem) return current;
+
+  const updated = [...current, safeItem];
+  saveCartItems(updated);
+  return loadCartItems();
 }
 
 export function removeCartItem(id: string): CartItem[] {
@@ -79,7 +139,7 @@ export function clearCart(): void {
 // ── Derived ───────────────────────────────────────────────────────────────────
 
 export function getCartTotalCents(items: CartItem[]): number {
-  return items.reduce((sum, item) => sum + item.basePriceCents, 0);
+  return normalizeCartItems(items).reduce((sum, item) => sum + item.basePriceCents, 0);
 }
 
 /**
