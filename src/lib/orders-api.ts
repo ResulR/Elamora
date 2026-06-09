@@ -26,6 +26,9 @@ export interface ApiOrder {
   };
   customName: string;
   customMessage: string;
+  subtotalCents: number;
+  shippingCents: number;
+  taxCents: number;
   totalCents: number;
   internalNotes: string;
   createdAt: string;

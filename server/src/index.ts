@@ -246,10 +246,13 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
       });
     }
 
-    const totalCents = validatedItems.reduce(
+    const subtotalCents = validatedItems.reduce(
       (sum, item) => sum + item.unitPriceCents * item.quantity,
       0
     );
+    const shippingCents = 0;
+    const taxCents = 0;
+    const totalCents = subtotalCents + shippingCents + taxCents;
 
     const orderResult = await client.query(
       `
@@ -264,9 +267,12 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
           delivery_address,
           custom_name,
           custom_message,
+          subtotal_cents,
+          shipping_cents,
+          tax_cents,
           total_cents
         )
-        VALUES ($1, 'pending', $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        VALUES ($1, 'pending', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING *
       `,
       [
@@ -279,6 +285,9 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
         payload.customer.address,
         payload.customName,
         payload.customMessage,
+        subtotalCents,
+        shippingCents,
+        taxCents,
         totalCents,
       ]
     );
@@ -643,6 +652,9 @@ function mapOrderRow(row: any) {
     },
     customName: row.custom_name ?? "",
     customMessage: row.custom_message ?? "",
+    subtotalCents: row.subtotal_cents ?? row.total_cents,
+    shippingCents: row.shipping_cents ?? 0,
+    taxCents: row.tax_cents ?? 0,
     totalCents: row.total_cents,
     internalNotes: row.internal_notes ?? "",
     createdAt: row.created_at,
