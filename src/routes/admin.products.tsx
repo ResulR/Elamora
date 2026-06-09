@@ -15,6 +15,7 @@ const categories: { value: ProductCategory; label: string }[] = [
   { value: "bucket", label: "Buckets" },
   { value: "flower", label: "Flowers" },
   { value: "balloon", label: "Balloons" },
+  { value: "plush", label: "Plush Toys" },
   { value: "color", label: "Colors" },
 ];
 

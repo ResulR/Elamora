@@ -1,7 +1,7 @@
 // Shared domain types for the bucket configurator.
 // TODO: extend / move to per-domain files once features are wired.
 
-export type ProductCategory = "bucket" | "flower" | "balloon" | "color";
+export type ProductCategory = "bucket" | "flower" | "balloon" | "plush" | "color";
 
 export interface Product {
   id: string;
