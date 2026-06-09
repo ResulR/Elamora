@@ -58,6 +58,14 @@ const createOrderSchema = z.object({
     email: z.string().trim().email().max(255),
     phone: z.string().trim().max(80).optional().default(""),
     address: z.string().trim().max(500).optional().default(""),
+    addressLine1: z.string().trim().max(255).optional().default(""),
+    addressLine2: z.string().trim().max(255).optional().default(""),
+    postalCode: z.string().trim().max(20).optional().default(""),
+    city: z.string().trim().max(120).optional().default(""),
+    country: z.string().trim().min(2).max(2).optional().default("BE").transform((value) => value.toUpperCase()),
+    deliveryDate: z.string().trim().max(20).optional().default(""),
+    deliveryInstructions: z.string().trim().max(1000).optional().default(""),
+    recipientPhone: z.string().trim().max(80).optional().default(""),
     deliveryMethod: z.enum(["pickup", "delivery"]).optional().default("pickup"),
   }),
   customName: z.string().trim().max(120).optional().default(""),
@@ -315,7 +323,50 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
       (sum, item) => sum + item.unitPriceCents * item.quantity,
       0
     );
-    const shippingCents = 0;
+
+    let shippingCents = 0;
+
+    if (payload.customer.deliveryMethod === "delivery") {
+      const postalCode = payload.customer.postalCode;
+      const country = payload.customer.country;
+
+      if (!postalCode || !country) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          ok: false,
+          error: "missing_shipping_address",
+        });
+      }
+
+      const shippingResult = await client.query(
+        `
+          SELECT
+            name,
+            price_cents,
+            lead_time_days
+          FROM delivery_zones
+          WHERE is_active = true
+            AND country_code = $1
+            AND $2 ~ postal_pattern
+          ORDER BY price_cents ASC, lead_time_days ASC, name ASC
+          LIMIT 1
+        `,
+        [country, postalCode]
+      );
+
+      const shippingZone = shippingResult.rows[0];
+
+      if (!shippingZone) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          ok: false,
+          error: "zone_unavailable",
+        });
+      }
+
+      shippingCents = shippingZone.price_cents;
+    }
+
     const taxCents = 0;
     const totalCents = subtotalCents + shippingCents + taxCents;
 
@@ -330,6 +381,14 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
           customer_phone,
           delivery_method,
           delivery_address,
+          address_line1,
+          address_line2,
+          postal_code,
+          city,
+          country_code,
+          delivery_date,
+          delivery_instructions,
+          recipient_phone,
           custom_name,
           custom_message,
           subtotal_cents,
@@ -337,7 +396,7 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
           tax_cents,
           total_cents
         )
-        VALUES ($1, 'pending', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        VALUES ($1, 'pending', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NULLIF($12, '')::date, $13, $14, $15, $16, $17, $18, $19)
         RETURNING *
       `,
       [
@@ -348,6 +407,14 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
         payload.customer.phone,
         payload.customer.deliveryMethod,
         payload.customer.address,
+        payload.customer.addressLine1 || payload.customer.address,
+        payload.customer.addressLine2,
+        payload.customer.postalCode,
+        payload.customer.city,
+        payload.customer.country,
+        payload.customer.deliveryDate,
+        payload.customer.deliveryInstructions,
+        payload.customer.recipientPhone || payload.customer.phone,
         payload.customName,
         payload.customMessage,
         subtotalCents,
@@ -713,6 +780,14 @@ function mapOrderRow(row: any) {
       email: row.customer_email,
       phone: row.customer_phone ?? "",
       address: row.delivery_address ?? "",
+      addressLine1: row.address_line1 ?? "",
+      addressLine2: row.address_line2 ?? "",
+      postalCode: row.postal_code ?? "",
+      city: row.city ?? "",
+      country: row.country_code ?? "",
+      deliveryDate: row.delivery_date ?? "",
+      deliveryInstructions: row.delivery_instructions ?? "",
+      recipientPhone: row.recipient_phone ?? "",
       deliveryMethod: row.delivery_method ?? "pickup",
     },
     customName: row.custom_name ?? "",
