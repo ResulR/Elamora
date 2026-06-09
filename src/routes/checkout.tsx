@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { ShippingPicker, type ShippingFormState } from "@/components/checkout/ShippingPicker";
 import { SectionTitle } from "@/components/ui-kit/SectionTitle";
 import { createDatabaseOrder } from "@/lib/orders-api";
 import { fetchCatalog, emptyCatalog, type CatalogData } from "@/lib/catalog-api";
@@ -13,6 +14,7 @@ import {
   buildCartCustomMessage,
 } from "@/lib/cart-storage";
 import { formatPrice } from "@/lib/format";
+import type { ShippingQuote } from "@/lib/shipping-api";
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({
@@ -24,20 +26,37 @@ export const Route = createFileRoute("/checkout")({
   component: CheckoutPage,
 });
 
+const initialShipping: ShippingFormState = {
+  deliveryMethod: "pickup",
+  addressLine1: "",
+  addressLine2: "",
+  postalCode: "",
+  city: "",
+  country: "BE",
+  deliveryDate: "",
+  deliveryInstructions: "",
+  recipientPhone: "",
+};
+
+function isSunday(dateValue: string): boolean {
+  if (!dateValue) return false;
+  const date = new Date(`${dateValue}T12:00:00`);
+  return date.getDay() === 0;
+}
+
 function CheckoutPage() {
-  const [cartItems, setCartItems]         = useState<CartItem[]>([]);
-  const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "delivery">("pickup");
-  const [isSubmitting, setIsSubmitting]   = useState(false);
-  const [submitError, setSubmitError]     = useState<string | null>(null);
-  const [catalog, setCatalog]             = useState<CatalogData>(() => emptyCatalog);
+  const [cartItems, setCartItems]       = useState<CartItem[]>([]);
+  const [shipping, setShipping]         = useState<ShippingFormState>(initialShipping);
+  const [shippingQuote, setShippingQuote] = useState<ShippingQuote | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError]   = useState<string | null>(null);
+  const [catalog, setCatalog]           = useState<CatalogData>(() => emptyCatalog);
 
   useEffect(() => {
-    // Load cart items. Fall back to legacy single-config if cart is empty.
     let items = loadCartItems();
     if (items.length === 0) {
       const legacy = loadConfiguration();
       if (legacy?.bucketId) {
-        // Convert legacy config to a CartItem for display
         items = [{
           id:             "legacy",
           designId:       legacy.designId ?? "",
@@ -53,26 +72,44 @@ function CheckoutPage() {
     }
     setCartItems(items);
 
-    // Load catalog for product name lookup
     fetchCatalog()
       .then(setCatalog)
       .catch(() => setCatalog(emptyCatalog));
   }, []);
 
-  const totalCents   = getCartTotalCents(cartItems);
+  const subtotalCents = getCartTotalCents(cartItems);
+  const shippingCents =
+    shipping.deliveryMethod === "delivery" && shippingQuote?.available
+      ? shippingQuote.shippingCents
+      : 0;
+  const previewTotalCents = subtotalCents + shippingCents;
+
   const hasItems     = cartItems.length > 0;
   const hasValidItem = cartItems.some((item) => item.bucketId);
+
+  const isDeliveryReady = useMemo(() => {
+    if (shipping.deliveryMethod === "pickup") return true;
+    if (!shipping.addressLine1.trim()) return false;
+    if (!shipping.postalCode.trim()) return false;
+    if (!shipping.city.trim()) return false;
+    if (shipping.deliveryDate && isSunday(shipping.deliveryDate)) return false;
+    return Boolean(shippingQuote?.available);
+  }, [shipping, shippingQuote]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!hasValidItem) return;
+
+    if (!isDeliveryReady) {
+      setSubmitError("Please complete a valid delivery address before placing your order.");
+      return;
+    }
 
     const form = new FormData(event.currentTarget);
     setIsSubmitting(true);
     setSubmitError(null);
 
     try {
-      // Build items[] from all cart items' bucketId
       const orderItems = cartItems
         .filter((item) => item.bucketId)
         .map((item) => ({
@@ -87,30 +124,46 @@ function CheckoutPage() {
         return;
       }
 
-      // Aggregate personalizations — backend only supports one customMessage
       const customMessage = buildCartCustomMessage(cartItems);
       const customName    = cartItems.find((i) => i.firstName)?.firstName ?? "";
+      const phone         = String(form.get("phone") ?? "").trim();
 
       const order = await createDatabaseOrder({
         customer: {
-          firstName:      String(form.get("firstName") ?? "").trim(),
-          lastName:       String(form.get("lastName")  ?? "").trim(),
-          email:          String(form.get("email")     ?? "").trim(),
-          phone:          String(form.get("phone")     ?? "").trim(),
-          address:        String(form.get("address")   ?? "").trim(),
-          deliveryMethod,
+          firstName: String(form.get("firstName") ?? "").trim(),
+          lastName:  String(form.get("lastName")  ?? "").trim(),
+          email:     String(form.get("email")     ?? "").trim(),
+          phone,
+          address: shipping.addressLine1,
+          addressLine1: shipping.addressLine1.trim(),
+          addressLine2: shipping.addressLine2.trim(),
+          postalCode: shipping.postalCode.trim(),
+          city: shipping.city.trim(),
+          country: shipping.country.trim().toUpperCase(),
+          deliveryDate: shipping.deliveryDate,
+          deliveryInstructions: shipping.deliveryInstructions.trim(),
+          recipientPhone: shipping.recipientPhone.trim() || phone,
+          deliveryMethod: shipping.deliveryMethod,
         },
         customName,
         customMessage,
         items: orderItems,
       });
 
-      // Clear cart after successful order
       clearCart();
 
       window.location.href = `/confirmation?reference=${encodeURIComponent(order.reference)}`;
-    } catch {
-      setSubmitError("Could not place your order. Please try again.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+
+      if (message === "zone_unavailable") {
+        setSubmitError("This delivery area is not covered yet.");
+      } else if (message === "missing_shipping_address") {
+        setSubmitError("Please complete your delivery address.");
+      } else {
+        setSubmitError("Could not place your order. Please try again.");
+      }
+
       setIsSubmitting(false);
     }
   };
@@ -141,7 +194,6 @@ function CheckoutPage() {
         ) : (
           <form onSubmit={handleSubmit} className="grid lg:grid-cols-3 gap-8">
 
-            {/* Left — customer details */}
             <div className="lg:col-span-2 space-y-6">
               <section className="bg-surface/80 border border-border/60 rounded-2xl p-6 shadow-soft">
                 <h2 className="font-display text-xl mb-4">Your details</h2>
@@ -150,34 +202,19 @@ function CheckoutPage() {
                   <Field name="lastName"  label="Last name (optional)" placeholder="Martin" />
                   <Field name="email"     label="Email" type="email" placeholder="you@example.com" required />
                   <Field name="phone"     label="Phone" type="tel" placeholder="+32 470 00 00 00" />
-                  <div className="sm:col-span-2">
-                    <Field name="address" label="Address (optional)" placeholder="Street, city, postal code" />
-                  </div>
                 </div>
               </section>
 
-              <section className="bg-surface/80 border border-border/60 rounded-2xl p-6 shadow-soft">
-                <h2 className="font-display text-xl mb-4">Delivery</h2>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <label className="border border-border rounded-xl p-4 cursor-pointer hover:border-primary transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary-soft/20">
-                    <input type="radio" name="delivery" className="mr-2"
-                      checked={deliveryMethod === "pickup"}
-                      onChange={() => setDeliveryMethod("pickup")} />
-                    <span className="font-medium">Store pickup</span>
-                    <p className="text-xs text-muted-foreground mt-1">Free</p>
-                  </label>
-                  <label className="border border-border rounded-xl p-4 cursor-pointer hover:border-primary transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary-soft/20">
-                    <input type="radio" name="delivery" className="mr-2"
-                      checked={deliveryMethod === "delivery"}
-                      onChange={() => setDeliveryMethod("delivery")} />
-                    <span className="font-medium">Delivery</span>
-                    <p className="text-xs text-muted-foreground mt-1">Price on confirmation</p>
-                  </label>
-                </div>
-              </section>
+              <ShippingPicker
+                value={shipping}
+                onChange={(next) => {
+                  setShipping(next);
+                  setSubmitError(null);
+                }}
+                onQuoteChange={setShippingQuote}
+              />
             </div>
 
-            {/* Right — order summary */}
             <aside className="bg-surface/80 border border-border/60 rounded-2xl p-6 shadow-soft h-fit lg:sticky lg:top-20">
               <h2 className="font-display text-lg mb-4">
                 Your order
@@ -204,8 +241,8 @@ function CheckoutPage() {
                         </span>
                       </div>
                       <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
-                        {item.firstName     && <p>Name: {item.firstName}</p>}
-                        {item.message       && <p className="line-clamp-1 italic">{item.message}</p>}
+                        {item.firstName      && <p>Name: {item.firstName}</p>}
+                        {item.message        && <p className="line-clamp-1 italic">{item.message}</p>}
                         {item.customRequests && <p className="line-clamp-1 italic">{item.customRequests}</p>}
                       </div>
                     </div>
@@ -213,21 +250,37 @@ function CheckoutPage() {
                 ))}
               </div>
 
-              <div className="border-t border-border pt-3 flex justify-between font-display text-lg mb-5">
-                <span>Total</span>
-                <span className="text-primary">{formatPrice(totalCents)}</span>
+              <div className="border-t border-border pt-3 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span>{formatPrice(subtotalCents)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Delivery</span>
+                  <span>
+                    {shipping.deliveryMethod === "pickup"
+                      ? "Free"
+                      : shippingQuote?.available
+                        ? formatPrice(shippingCents)
+                        : "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between font-display text-lg pt-2 border-t border-border">
+                  <span>Total</span>
+                  <span className="text-primary">{formatPrice(previewTotalCents)}</span>
+                </div>
               </div>
 
               {submitError && (
-                <p className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                   {submitError}
                 </p>
               )}
 
               <button
                 type="submit"
-                disabled={isSubmitting || !hasValidItem}
-                className="w-full px-4 py-3 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity shadow-soft disabled:opacity-60"
+                disabled={isSubmitting || !hasValidItem || !isDeliveryReady}
+                className="mt-5 w-full px-4 py-3 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity shadow-soft disabled:opacity-60"
               >
                 {isSubmitting ? "Placing order..." : "Place order ✦"}
               </button>
@@ -237,7 +290,7 @@ function CheckoutPage() {
               </Link>
 
               <p className="mt-4 text-xs text-muted-foreground text-center italic">
-                Your order will be saved and confirmed shortly.
+                Final delivery fees are recalculated securely before confirmation.
               </p>
             </aside>
           </form>
