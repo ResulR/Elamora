@@ -36,3 +36,8 @@ dist-ssr
 .env.*
 !.env.example
 !server/.env.example
+
+# Database backups / dumps
+*.dump
+*.sql.gz
+*.backup
