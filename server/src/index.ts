@@ -9,6 +9,7 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { config } from "./config.js";
 import { checkDatabase, pool } from "./db.js";
+import { sendOrderPaidEmail } from "./email.js";
 import { requireAdmin, type AdminRequest } from "./middleware/require-admin.js";
 
 const app = express();
@@ -871,12 +872,103 @@ app.patch(
 
     const order = result.rows[0];
 
+    if (parsed.data.status === "confirmed") {
+      void sendPaymentConfirmedEmailForOrder(order.id);
+    }
+
     return res.json({
       ok: true,
       order: mapOrderRow(order),
     });
   }
 );
+
+
+async function sendPaymentConfirmedEmailForOrder(orderId: string) {
+  const notificationType = "payment_confirmed";
+
+  const notificationResult = await pool.query(
+    `
+      INSERT INTO order_notifications (order_id, notification_type, recipient_email, status, provider)
+      SELECT id, $2, customer_email, 'pending', 'resend'
+      FROM orders
+      WHERE id = $1
+      ON CONFLICT (order_id, notification_type) DO NOTHING
+      RETURNING id
+    `,
+    [orderId, notificationType]
+  );
+
+  const notification = notificationResult.rows[0];
+
+  if (!notification) {
+    return;
+  }
+
+  try {
+    const orderResult = await pool.query(
+      `
+        SELECT *
+        FROM orders
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [orderId]
+    );
+
+    const order = orderResult.rows[0];
+
+    if (!order) {
+      throw new Error("order_not_found_for_payment_confirmed_email");
+    }
+
+    const itemsResult = await pool.query(
+      `
+        SELECT *
+        FROM order_items
+        WHERE order_id = $1
+        ORDER BY created_at ASC
+      `,
+      [order.id]
+    );
+
+    const result = await sendOrderPaidEmail({
+      to: order.customer_email,
+      order: mapOrderRow(order),
+      items: itemsResult.rows.map(mapOrderItemRow),
+    });
+
+    await pool.query(
+      `
+        UPDATE order_notifications
+        SET status = 'sent',
+            provider_message_id = $2,
+            error_message = NULL,
+            sent_at = now()
+        WHERE id = $1
+      `,
+      [notification.id, result.providerMessageId]
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown_email_error";
+
+    console.error("payment_confirmed_email_failed", {
+      orderId,
+      notificationId: notification.id,
+      error: message,
+    });
+
+    await pool.query(
+      `
+        UPDATE order_notifications
+        SET status = 'failed',
+            error_message = $2
+        WHERE id = $1
+      `,
+      [notification.id, message.slice(0, 1000)]
+    );
+  }
+}
 
 app.use((_req: Request, res: Response) => {
   return res.status(404).json({ ok: false, error: "Not found" });
