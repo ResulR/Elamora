@@ -101,6 +101,24 @@ CREATE TABLE public.orders (
 
 
 --
+-- Name: order_notifications; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.order_notifications (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    order_id uuid NOT NULL,
+    notification_type text NOT NULL,
+    recipient_email text NOT NULL,
+    status text DEFAULT 'pending'::text NOT NULL,
+    provider text DEFAULT 'resend'::text,
+    provider_message_id text,
+    error_message text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    sent_at timestamp with time zone
+);
+
+
+--
 -- Name: product_categories; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -188,6 +206,22 @@ ALTER TABLE ONLY public.order_items
 
 
 --
+-- Name: order_notifications order_notifications_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.order_notifications
+    ADD CONSTRAINT order_notifications_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: order_notifications order_notifications_order_id_notification_type_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.order_notifications
+    ADD CONSTRAINT order_notifications_order_id_notification_type_key UNIQUE (order_id, notification_type);
+
+
+--
 -- Name: orders orders_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -215,6 +249,27 @@ CREATE INDEX orders_payment_provider_idx ON public.orders USING btree (payment_p
 --
 
 CREATE INDEX orders_payment_status_idx ON public.orders USING btree (payment_status);
+
+
+--
+-- Name: order_notifications_order_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX order_notifications_order_id_idx ON public.order_notifications USING btree (order_id);
+
+
+--
+-- Name: order_notifications_notification_type_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX order_notifications_notification_type_idx ON public.order_notifications USING btree (notification_type);
+
+
+--
+-- Name: order_notifications_status_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX order_notifications_status_idx ON public.order_notifications USING btree (status);
 
 
 --
@@ -263,6 +318,14 @@ ALTER TABLE ONLY public.shop_settings
 
 ALTER TABLE ONLY public.order_items
     ADD CONSTRAINT order_items_color_id_fkey FOREIGN KEY (color_id) REFERENCES public.product_colors(id);
+
+
+--
+-- Name: order_notifications order_notifications_order_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.order_notifications
+    ADD CONSTRAINT order_notifications_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id) ON DELETE CASCADE;
 
 
 --
