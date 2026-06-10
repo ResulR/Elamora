@@ -18,6 +18,7 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().trim().min(1).optional(),
   EMAIL_FROM: z.string().trim().min(1).optional(),
   EMAIL_REPLY_TO: z.string().trim().email().optional(),
+  ADMIN_NOTIFICATION_EMAIL: z.string().trim().email().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -59,6 +60,7 @@ if (parsed.data.NODE_ENV === "production" && invalidBankTransferConfigEntries.le
 const invalidEmailConfigEntries = [
   ["RESEND_API_KEY", parsed.data.RESEND_API_KEY],
   ["EMAIL_FROM", parsed.data.EMAIL_FROM],
+  ["ADMIN_NOTIFICATION_EMAIL", parsed.data.ADMIN_NOTIFICATION_EMAIL],
 ].filter(([, value]) => !value);
 
 if (parsed.data.NODE_ENV === "production" && invalidEmailConfigEntries.length > 0) {
@@ -88,5 +90,6 @@ export const config = {
     resendApiKey: parsed.data.RESEND_API_KEY ?? "",
     from: parsed.data.EMAIL_FROM ?? "",
     replyTo: parsed.data.EMAIL_REPLY_TO,
+    adminNotificationEmail: parsed.data.ADMIN_NOTIFICATION_EMAIL ?? "",
   },
 };

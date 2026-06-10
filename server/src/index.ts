@@ -9,7 +9,7 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { config } from "./config.js";
 import { checkDatabase, pool } from "./db.js";
-import { sendOrderPaidEmail } from "./email.js";
+import { sendAdminNewOrderEmail, sendOrderPaidEmail } from "./email.js";
 import { requireAdmin, type AdminRequest } from "./middleware/require-admin.js";
 
 const app = express();
@@ -553,6 +553,8 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
 
     await client.query("COMMIT");
 
+    void sendAdminNewOrderEmailForOrder(order.id);
+
     return res.status(201).json({
       ok: true,
       order: {
@@ -883,6 +885,107 @@ app.patch(
   }
 );
 
+
+
+async function sendAdminNewOrderEmailForOrder(orderId: string) {
+  const notificationType = "admin_new_order";
+  const adminEmail = config.email.adminNotificationEmail;
+
+  if (!adminEmail) {
+    console.error("admin_new_order_email_skipped", {
+      orderId,
+      error: "admin_notification_email_not_configured",
+    });
+    return;
+  }
+
+  const notificationResult = await pool.query(
+    `
+      INSERT INTO order_notifications (order_id, notification_type, recipient_email, status, provider)
+      SELECT id, $2, $3, 'pending', 'resend'
+      FROM orders
+      WHERE id = $1
+      ON CONFLICT (order_id, notification_type) DO NOTHING
+      RETURNING id
+    `,
+    [orderId, notificationType, adminEmail]
+  );
+
+  const notification = notificationResult.rows[0];
+
+  if (!notification) {
+    return;
+  }
+
+  try {
+    const orderResult = await pool.query(
+      `
+        SELECT *
+        FROM orders
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [orderId]
+    );
+
+    const order = orderResult.rows[0];
+
+    if (!order) {
+      throw new Error("order_not_found_for_admin_new_order_email");
+    }
+
+    const itemsResult = await pool.query(
+      `
+        SELECT *
+        FROM order_items
+        WHERE order_id = $1
+        ORDER BY created_at ASC
+      `,
+      [order.id]
+    );
+
+    const mappedOrder = mapOrderRow(order);
+    const publicBaseUrl = config.corsOrigin.replace(/\/$/, "");
+    const adminOrderUrl = `${publicBaseUrl}/admin/orders/${encodeURIComponent(order.reference)}`;
+
+    const result = await sendAdminNewOrderEmail({
+      to: adminEmail,
+      adminOrderUrl,
+      order: mappedOrder,
+      items: itemsResult.rows.map(mapOrderItemRow),
+    });
+
+    await pool.query(
+      `
+        UPDATE order_notifications
+        SET status = 'sent',
+            provider_message_id = $2,
+            error_message = NULL,
+            sent_at = now()
+        WHERE id = $1
+      `,
+      [notification.id, result.providerMessageId]
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown_email_error";
+
+    console.error("admin_new_order_email_failed", {
+      orderId,
+      notificationId: notification.id,
+      error: message,
+    });
+
+    await pool.query(
+      `
+        UPDATE order_notifications
+        SET status = 'failed',
+            error_message = $2
+        WHERE id = $1
+      `,
+      [notification.id, message.slice(0, 1000)]
+    );
+  }
+}
 
 async function sendPaymentConfirmedEmailForOrder(orderId: string) {
   const notificationType = "payment_confirmed";

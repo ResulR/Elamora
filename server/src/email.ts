@@ -243,3 +243,158 @@ export async function sendOrderPaidEmail(input: OrderPaidEmailInput) {
     text: email.text,
   });
 }
+
+
+export type AdminNewOrderEmailInput = {
+  to: string;
+  adminOrderUrl: string;
+  order: {
+    reference: string;
+    status: string;
+    totalCents: number;
+    subtotalCents?: number;
+    shippingCents?: number;
+    paymentStatus?: string;
+    customer: {
+      firstName: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+      deliveryMethod?: string;
+      deliveryDate?: string;
+      deliveryTimeSlot?: string;
+      address?: string;
+      addressLine1?: string;
+      addressLine2?: string;
+      postalCode?: string;
+      city?: string;
+      country?: string;
+    };
+    customName?: string;
+    customMessage?: string;
+    createdAt?: string;
+  };
+  items: OrderPaidEmailItem[];
+};
+
+export function buildAdminNewOrderEmail(input: AdminNewOrderEmailInput) {
+  const order = input.order;
+  const customerName = [order.customer.firstName, order.customer.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  const deliveryAddress = [
+    order.customer.address || order.customer.addressLine1,
+    order.customer.addressLine2,
+    [order.customer.postalCode, order.customer.city].filter(Boolean).join(" "),
+    order.customer.country,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  const itemsText = input.items
+    .map((item) => {
+      const color = item.colorName ? ` (${item.colorName})` : "";
+      return `- ${item.productName}${color} x${item.quantity}: ${formatMoney(item.unitPriceCents * item.quantity)}`;
+    })
+    .join("\n");
+
+  const text = [
+    `New Elamora order: ${order.reference}`,
+    "",
+    `Admin link: ${input.adminOrderUrl}`,
+    "",
+    "Customer:",
+    `${customerName || order.customer.firstName}`,
+    `${order.customer.email || "-"}`,
+    `${order.customer.phone || "-"}`,
+    "",
+    "Order:",
+    `Reference: ${order.reference}`,
+    `Status: ${order.status}`,
+    `Payment status: ${order.paymentStatus || "pending"}`,
+    `Total: ${formatMoney(order.totalCents)}`,
+    `Shipping: ${formatMoney(order.shippingCents ?? 0)}`,
+    "",
+    "Delivery:",
+    `Method: ${order.customer.deliveryMethod || "pickup"}`,
+    `Date: ${order.customer.deliveryDate || "-"}`,
+    `Time slot: ${order.customer.deliveryTimeSlot || "-"}`,
+    `Address: ${deliveryAddress || "-"}`,
+    "",
+    "Items:",
+    itemsText || "-",
+    "",
+    "Personalization:",
+    `Name: ${order.customName || "-"}`,
+    `Message: ${order.customMessage || "-"}`,
+  ].join("\n");
+
+  const itemsHtml = input.items
+    .map((item) => {
+      const color = item.colorName ? ` (${escapeHtml(item.colorName)})` : "";
+      return `<li>${escapeHtml(item.productName)}${color} x${escapeHtml(item.quantity)} — ${formatMoney(item.unitPriceCents * item.quantity)}</li>`;
+    })
+    .join("");
+
+  const html = `
+    <!doctype html>
+    <html>
+      <body style="font-family:Arial,Helvetica,sans-serif;color:#1f1f1f;line-height:1.5;">
+        <h1>New Elamora order</h1>
+        <p><strong>Reference:</strong> ${escapeHtml(order.reference)}</p>
+        <p><strong>Total:</strong> ${formatMoney(order.totalCents)}</p>
+        <p><strong>Status:</strong> ${escapeHtml(order.status)}</p>
+        <p><strong>Payment status:</strong> ${escapeHtml(order.paymentStatus || "pending")}</p>
+
+        <p>
+          <a href="${escapeHtml(input.adminOrderUrl)}" style="display:inline-block;padding:10px 16px;background:#7f4f73;color:#ffffff;text-decoration:none;border-radius:999px;">
+            Open order in admin
+          </a>
+        </p>
+
+        <h2>Customer</h2>
+        <p>
+          ${escapeHtml(customerName || order.customer.firstName)}<br>
+          ${escapeHtml(order.customer.email || "-")}<br>
+          ${escapeHtml(order.customer.phone || "-")}
+        </p>
+
+        <h2>Delivery</h2>
+        <p>
+          Method: ${escapeHtml(order.customer.deliveryMethod || "pickup")}<br>
+          Date: ${escapeHtml(order.customer.deliveryDate || "-")}<br>
+          Time slot: ${escapeHtml(order.customer.deliveryTimeSlot || "-")}<br>
+          Address: ${escapeHtml(deliveryAddress || "-")}
+        </p>
+
+        <h2>Items</h2>
+        <ul>${itemsHtml || "<li>-</li>"}</ul>
+
+        <h2>Personalization</h2>
+        <p>
+          Name: ${escapeHtml(order.customName || "-")}<br>
+          Message: ${escapeHtml(order.customMessage || "-")}
+        </p>
+      </body>
+    </html>
+  `;
+
+  return {
+    subject: `New Elamora order ${order.reference}`,
+    html,
+    text,
+  };
+}
+
+export async function sendAdminNewOrderEmail(input: AdminNewOrderEmailInput) {
+  const email = buildAdminNewOrderEmail(input);
+
+  return sendEmail({
+    to: input.to,
+    subject: email.subject,
+    html: email.html,
+    text: email.text,
+  });
+}
