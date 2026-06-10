@@ -18,11 +18,13 @@ export const Route = createFileRoute("/admin/orders/$id")({
 
 const statuses: OrderStatus[] = [
   "pending_bank_transfer",
-  "pending",
   "confirmed",
   "preparing",
+  "ready_for_pickup",
+  "shipped",
   "completed",
   "cancelled",
+  "refunded",
 ];
 
 function AdminOrderDetailPage() {
@@ -48,6 +50,10 @@ function AdminOrderDetailPage() {
       setOrder({
         ...order,
         status: updatedOrder.status,
+        paymentStatus: updatedOrder.paymentStatus,
+        paymentProvider: updatedOrder.paymentProvider,
+        paymentReference: updatedOrder.paymentReference,
+        paidAt: updatedOrder.paidAt,
         updatedAt: updatedOrder.updatedAt,
       });
     } catch {
@@ -97,7 +103,7 @@ function AdminOrderDetailPage() {
                 >
                   {statuses.map((status) => (
                     <option key={status} value={status}>
-                      {status}
+                      {formatOrderStatus(status)}
                     </option>
                   ))}
                 </select>
@@ -193,5 +199,13 @@ function InfoRow({ label, value }: { label: string; value: ReactNode }) {
 }
 
 function formatPaymentStatus(status: string) {
+  return status.replaceAll("_", " ");
+}
+
+function formatOrderStatus(status: OrderStatus) {
+  if (status === "pending_bank_transfer") {
+    return "Awaiting bank transfer";
+  }
+
   return status.replaceAll("_", " ");
 }

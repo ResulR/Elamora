@@ -29,11 +29,13 @@ export interface BucketConfiguration {
 
 export type OrderStatus =
   | "pending_bank_transfer"
-  | "pending"
   | "confirmed"
   | "preparing"
+  | "ready_for_pickup"
+  | "shipped"
   | "completed"
-  | "cancelled";
+  | "cancelled"
+  | "refunded";
 
 export interface CustomerInfo {
   firstName: string;

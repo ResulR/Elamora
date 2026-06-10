@@ -58,7 +58,7 @@ function AdminDashboard() {
 
   const stats = useMemo(() => {
     const pendingOrders = orders.filter((order) =>
-      order.status === "pending_bank_transfer" || order.status === "pending"
+      order.status === "pending_bank_transfer"
     ).length;
     const revenueCents = orders.reduce((sum, order) => sum + order.totalCents, 0);
 
@@ -73,7 +73,7 @@ function AdminDashboard() {
         label: "Pending orders",
         value: isLoading ? "…" : String(pendingOrders),
         icon: Clock,
-        note: "Awaiting bank transfer or confirmation",
+        note: "Awaiting bank transfer",
       },
       {
         label: "Revenue",

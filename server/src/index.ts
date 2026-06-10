@@ -45,11 +45,13 @@ const loginSchema = z.object({
 
 const orderStatusSchema = z.enum([
   "pending_bank_transfer",
-  "pending",
   "confirmed",
   "preparing",
+  "ready_for_pickup",
+  "shipped",
   "completed",
   "cancelled",
+  "refunded",
 ]);
 
 const createOrderSchema = z.object({
@@ -770,6 +772,20 @@ app.patch(
       return res.status(400).json({ ok: false, error: "Invalid status" });
     }
 
+    const currentResult = await pool.query(
+      `
+        SELECT id
+        FROM orders
+        WHERE reference = $1
+        LIMIT 1
+      `,
+      [req.params.reference]
+    );
+
+    if (!currentResult.rows[0]) {
+      return res.status(404).json({ ok: false, error: "Order not found" });
+    }
+
     const result = await pool.query(
       `
         UPDATE orders
@@ -778,11 +794,11 @@ app.patch(
           payment_status = CASE
             WHEN $1 = 'confirmed' THEN 'paid'
             WHEN $1 = 'cancelled' THEN 'cancelled'
+            WHEN $1 = 'refunded' THEN 'refunded'
             ELSE payment_status
           END,
           paid_at = CASE
             WHEN $1 = 'confirmed' AND paid_at IS NULL THEN now()
-            WHEN $1 = 'cancelled' THEN NULL
             ELSE paid_at
           END,
           updated_at = now()
@@ -793,10 +809,6 @@ app.patch(
     );
 
     const order = result.rows[0];
-
-    if (!order) {
-      return res.status(404).json({ ok: false, error: "Order not found" });
-    }
 
     return res.json({
       ok: true,

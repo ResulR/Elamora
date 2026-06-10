@@ -15,11 +15,13 @@ export const Route = createFileRoute("/admin/orders/")({
 const filters: { value: OrderStatus | "all"; label: string }[] = [
   { value: "all", label: "All" },
   { value: "pending_bank_transfer", label: "Awaiting bank transfer" },
-  { value: "pending", label: "Pending" },
   { value: "confirmed", label: "Confirmed" },
   { value: "preparing", label: "Preparing" },
+  { value: "ready_for_pickup", label: "Ready for pickup" },
+  { value: "shipped", label: "Shipped" },
   { value: "completed", label: "Completed" },
   { value: "cancelled", label: "Cancelled" },
+  { value: "refunded", label: "Refunded" },
 ];
 
 function AdminOrdersPage() {
