@@ -90,6 +90,10 @@ CREATE TABLE public.orders (
     custom_name text,
     custom_message text,
     total_cents integer DEFAULT 0 NOT NULL,
+    payment_status text DEFAULT 'pending'::text NOT NULL,
+    payment_provider text DEFAULT 'bank_transfer'::text NOT NULL,
+    payment_reference text,
+    paid_at timestamp with time zone,
     internal_notes text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
@@ -197,6 +201,20 @@ ALTER TABLE ONLY public.orders
 
 ALTER TABLE ONLY public.orders
     ADD CONSTRAINT orders_reference_key UNIQUE (reference);
+
+
+--
+-- Name: orders_payment_provider_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX orders_payment_provider_idx ON public.orders USING btree (payment_provider);
+
+
+--
+-- Name: orders_payment_status_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX orders_payment_status_idx ON public.orders USING btree (payment_status);
 
 
 --
