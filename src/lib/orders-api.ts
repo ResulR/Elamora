@@ -46,6 +46,7 @@ export interface ApiOrder {
   internalNotes: string;
   createdAt: string;
   updatedAt: string;
+  confirmationToken?: string;
   items?: ApiOrderItem[];
 }
 
@@ -106,10 +107,13 @@ export async function createDatabaseOrder(payload: CreateOrderPayload): Promise<
   return data.order;
 }
 
-export async function getPublicOrder(reference: string): Promise<ApiOrder> {
-  const response = await fetch(`/api/orders/${encodeURIComponent(reference)}`, {
-    method: "GET",
-  });
+export async function getPublicOrder(reference: string, token: string): Promise<ApiOrder> {
+  const response = await fetch(
+    `/api/orders/confirmation/${encodeURIComponent(reference)}?token=${encodeURIComponent(token)}`,
+    {
+      method: "GET",
+    }
+  );
 
   const data = await response.json().catch(() => null) as ApiOrderResponse | null;
 

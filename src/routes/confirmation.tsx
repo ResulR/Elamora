@@ -20,14 +20,16 @@ function ConfirmationPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const reference = new URLSearchParams(window.location.search).get("reference");
+    const params = new URLSearchParams(window.location.search);
+    const reference = params.get("reference");
+    const token = params.get("token");
 
-    if (!reference) {
+    if (!reference || !token) {
       setIsLoading(false);
       return;
     }
 
-    getPublicOrder(reference)
+    getPublicOrder(reference, token)
       .then(setOrder)
       .catch(() => setOrder(null))
       .finally(() => setIsLoading(false));
@@ -49,7 +51,7 @@ function ConfirmationPage() {
         <div className="max-w-xl mx-auto px-4 sm:px-6 py-20 text-center">
           <h1 className="font-display text-4xl">No order found</h1>
           <p className="mt-3 text-muted-foreground">
-            Please create and place an order before opening the confirmation page.
+            Please create and place an order before opening the confirmation page. For security, the confirmation link must include the private order token.
           </p>
           <Link
             to="/configure"

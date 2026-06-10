@@ -94,6 +94,7 @@ CREATE TABLE public.orders (
     payment_provider text DEFAULT 'bank_transfer'::text NOT NULL,
     payment_reference text,
     paid_at timestamp with time zone,
+    confirmation_token_hash text,
     internal_notes text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
@@ -235,6 +236,13 @@ ALTER TABLE ONLY public.orders
 
 ALTER TABLE ONLY public.orders
     ADD CONSTRAINT orders_reference_key UNIQUE (reference);
+
+
+--
+-- Name: orders_confirmation_token_hash_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX orders_confirmation_token_hash_key ON public.orders USING btree (confirmation_token_hash) WHERE (confirmation_token_hash IS NOT NULL);
 
 
 --

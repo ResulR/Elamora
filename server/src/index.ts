@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import express, { type Request, type Response } from "express";
 import helmet from "helmet";
 import cors from "cors";
@@ -89,6 +90,14 @@ const createOrderSchema = z.object({
 const updateOrderStatusSchema = z.object({
   status: orderStatusSchema,
 });
+
+function createConfirmationToken() {
+  return crypto.randomBytes(32).toString("hex");
+}
+
+function hashConfirmationToken(token: string) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
 
 app.get("/api/health", async (_req: Request, res: Response) => {
   try {
@@ -442,6 +451,8 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
 
     const taxCents = 0;
     const totalCents = subtotalCents + shippingCents + taxCents;
+    const confirmationToken = createConfirmationToken();
+    const confirmationTokenHash = hashConfirmationToken(confirmationToken);
 
     const orderResult = await client.query(
       `
@@ -468,9 +479,10 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
           subtotal_cents,
           shipping_cents,
           tax_cents,
-          total_cents
+          total_cents,
+          confirmation_token_hash
         )
-        VALUES ($1, 'pending_bank_transfer', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NULLIF($13, '')::date, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+        VALUES ($1, 'pending_bank_transfer', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NULLIF($13, '')::date, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
         RETURNING *
       `,
       [
@@ -496,6 +508,7 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
         shippingCents,
         taxCents,
         totalCents,
+        confirmationTokenHash,
       ]
     );
 
@@ -533,7 +546,10 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
 
     return res.status(201).json({
       ok: true,
-      order: mapOrderRow(order),
+      order: {
+        ...mapOrderRow(order),
+        confirmationToken,
+      },
     });
   } catch (error) {
     await client.query("ROLLBACK");
@@ -549,15 +565,22 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
 });
 
 
-app.get("/api/orders/:reference", async (req: Request, res: Response) => {
+app.get("/api/orders/confirmation/:reference", async (req: Request, res: Response) => {
+  const token = String(req.query.token ?? "").trim();
+
+  if (!token) {
+    return res.status(400).json({ ok: false, error: "Missing confirmation token" });
+  }
+
   const orderResult = await pool.query(
     `
       SELECT *
       FROM orders
       WHERE reference = $1
+        AND confirmation_token_hash = $2
       LIMIT 1
     `,
-    [req.params.reference]
+    [req.params.reference, hashConfirmationToken(token)]
   );
 
   const order = orderResult.rows[0];
@@ -579,9 +602,39 @@ app.get("/api/orders/:reference", async (req: Request, res: Response) => {
   return res.json({
     ok: true,
     order: {
-      ...mapOrderRow(order),
+      id: order.id,
+      reference: order.reference,
+      status: order.status,
+      customName: order.custom_name ?? "",
+      customMessage: order.custom_message ?? "",
+      subtotalCents: order.subtotal_cents ?? order.total_cents,
+      shippingCents: order.shipping_cents ?? 0,
+      taxCents: order.tax_cents ?? 0,
+      totalCents: order.total_cents,
+      paymentStatus: order.payment_status ?? "pending",
+      paymentProvider: order.payment_provider ?? "bank_transfer",
+      paymentReference: order.payment_reference ?? order.reference,
+      paidAt: order.paid_at ?? null,
+      createdAt: order.created_at,
+      updatedAt: order.updated_at,
+      customer: {
+        firstName: order.customer_first_name,
+        lastName: order.customer_last_name ?? "",
+        deliveryMethod: order.delivery_method ?? "pickup",
+        deliveryDate: order.delivery_date ?? "",
+        deliveryTimeSlot: order.delivery_time_slot ?? "",
+        city: order.city ?? "",
+        country: order.country_code ?? "",
+      },
       items: itemsResult.rows.map(mapOrderItemRow),
     },
+  });
+});
+
+app.get("/api/orders/:reference", async (_req: Request, res: Response) => {
+  return res.status(410).json({
+    ok: false,
+    error: "This public order endpoint has been replaced by the secure confirmation endpoint.",
   });
 });
 app.post("/api/admin/login", loginLimiter, async (req: Request, res: Response) => {

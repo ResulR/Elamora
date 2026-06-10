@@ -148,7 +148,11 @@ function CheckoutPage() {
 
       clearCart();
 
-      window.location.href = `/confirmation?reference=${encodeURIComponent(order.reference)}`;
+      if (!order.confirmationToken) {
+        throw new Error("missing_confirmation_token");
+      }
+
+      window.location.href = `/confirmation?reference=${encodeURIComponent(order.reference)}&token=${encodeURIComponent(order.confirmationToken)}`;
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
 
