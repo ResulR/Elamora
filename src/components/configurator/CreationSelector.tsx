@@ -101,14 +101,14 @@ export function CreationSelector() {
 
   return (
     <>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-10 md:gap-x-7 md:gap-y-14 md:[&>*:nth-child(even)]:mt-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-8 max-w-6xl mx-auto">
         {DESIGN_PRESETS.map((creation) => (
           <button
             key={creation.id}
             onClick={() => choose(creation)}
-            className="group text-left focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/15 rounded-[28px]"
+            className="group text-left focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/15 rounded-[28px] cursor-pointer"
           >
-            <div className="relative aspect-[4/5] bg-primary-soft/35 rounded-[28px] overflow-hidden">
+            <div className="relative aspect-[4/5] max-h-[520px] bg-primary-soft/35 rounded-[28px] overflow-hidden">
               <img
                 src={creation.imageUrl}
                 alt={creation.name}
@@ -123,7 +123,7 @@ export function CreationSelector() {
                   e.stopPropagation();
                   setLightbox(creation);
                 }}
-                className="absolute top-3 right-3 h-9 w-9 rounded-full bg-card/75 backdrop-blur-sm flex items-center justify-center text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-3 right-3 h-9 w-9 rounded-full bg-card/75 backdrop-blur-sm flex items-center justify-center text-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                 aria-label={`View ${creation.name} larger`}
               >
                 <ZoomIn className="h-4 w-4" />
