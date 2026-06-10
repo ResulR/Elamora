@@ -109,6 +109,10 @@ function AdminOrderDetailPage() {
           />
           <InfoRow label="Date" value={formatDate(order.createdAt)} />
           <InfoRow label="Total" value={formatPrice(order.totalCents)} />
+          <InfoRow label="Payment status" value={formatPaymentStatus(order.paymentStatus)} />
+          <InfoRow label="Payment provider" value={order.paymentProvider || "-"} />
+          <InfoRow label="Payment reference" value={order.paymentReference || order.reference} />
+          <InfoRow label="Paid at" value={order.paidAt ? formatDate(order.paidAt) : "-"} />
         </Card>
 
         <Card title="Customer information">
@@ -186,4 +190,8 @@ function InfoRow({ label, value }: { label: string; value: ReactNode }) {
       <span className="text-sm font-medium text-right">{value}</span>
     </div>
   );
+}
+
+function formatPaymentStatus(status: string) {
+  return status.replaceAll("_", " ");
 }

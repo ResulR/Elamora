@@ -773,7 +773,19 @@ app.patch(
     const result = await pool.query(
       `
         UPDATE orders
-        SET status = $1, updated_at = now()
+        SET
+          status = $1,
+          payment_status = CASE
+            WHEN $1 = 'confirmed' THEN 'paid'
+            WHEN $1 = 'cancelled' THEN 'cancelled'
+            ELSE payment_status
+          END,
+          paid_at = CASE
+            WHEN $1 = 'confirmed' AND paid_at IS NULL THEN now()
+            WHEN $1 = 'cancelled' THEN NULL
+            ELSE paid_at
+          END,
+          updated_at = now()
         WHERE reference = $2
         RETURNING *
       `,
@@ -958,6 +970,10 @@ function mapOrderRow(row: any) {
     shippingCents: row.shipping_cents ?? 0,
     taxCents: row.tax_cents ?? 0,
     totalCents: row.total_cents,
+    paymentStatus: row.payment_status ?? "pending",
+    paymentProvider: row.payment_provider ?? "bank_transfer",
+    paymentReference: row.payment_reference ?? row.reference,
+    paidAt: row.paid_at ?? null,
     internalNotes: row.internal_notes ?? "",
     createdAt: row.created_at,
     updatedAt: row.updated_at,

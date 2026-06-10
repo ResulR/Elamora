@@ -39,6 +39,10 @@ export interface ApiOrder {
   shippingCents: number;
   taxCents: number;
   totalCents: number;
+  paymentStatus: string;
+  paymentProvider: string;
+  paymentReference: string;
+  paidAt: string | null;
   internalNotes: string;
   createdAt: string;
   updatedAt: string;
