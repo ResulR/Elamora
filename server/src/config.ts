@@ -15,6 +15,9 @@ const envSchema = z.object({
   BANK_NAME: z.string().trim().min(1).optional(),
   BANK_IBAN: z.string().trim().min(1).optional(),
   BANK_CURRENCY: z.string().trim().min(1).default("EUR"),
+  RESEND_API_KEY: z.string().trim().min(1).optional(),
+  EMAIL_FROM: z.string().trim().min(1).optional(),
+  EMAIL_REPLY_TO: z.string().trim().email().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -53,6 +56,19 @@ if (parsed.data.NODE_ENV === "production" && invalidBankTransferConfigEntries.le
   process.exit(1);
 }
 
+const invalidEmailConfigEntries = [
+  ["RESEND_API_KEY", parsed.data.RESEND_API_KEY],
+  ["EMAIL_FROM", parsed.data.EMAIL_FROM],
+].filter(([, value]) => !value);
+
+if (parsed.data.NODE_ENV === "production" && invalidEmailConfigEntries.length > 0) {
+  console.error("Invalid production email configuration");
+  console.error(
+    invalidEmailConfigEntries.map(([key]) => `${key} is missing`)
+  );
+  process.exit(1);
+}
+
 export const config = {
   nodeEnv: parsed.data.NODE_ENV,
   port: parsed.data.PORT,
@@ -66,5 +82,11 @@ export const config = {
     bankName: parsed.data.BANK_NAME ?? "",
     iban: parsed.data.BANK_IBAN ?? "",
     currency: parsed.data.BANK_CURRENCY,
+  },
+  email: {
+    configured: invalidEmailConfigEntries.length === 0,
+    resendApiKey: parsed.data.RESEND_API_KEY ?? "",
+    from: parsed.data.EMAIL_FROM ?? "",
+    replyTo: parsed.data.EMAIL_REPLY_TO,
   },
 };
