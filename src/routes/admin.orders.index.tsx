@@ -1,4 +1,4 @@
-﻿import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { EmptyState } from "@/components/ui-kit/EmptyState";
@@ -14,6 +14,7 @@ export const Route = createFileRoute("/admin/orders/")({
 
 const filters: { value: OrderStatus | "all"; label: string }[] = [
   { value: "all", label: "All" },
+  { value: "pending_bank_transfer", label: "Awaiting bank transfer" },
   { value: "pending", label: "Pending" },
   { value: "confirmed", label: "Confirmed" },
   { value: "preparing", label: "Preparing" },
@@ -135,7 +136,15 @@ function AdminOrdersPage() {
 function StatusBadge({ status }: { status: OrderStatus }) {
   return (
     <span className="inline-flex rounded-full border border-border px-2.5 py-1 text-xs capitalize">
-      {status}
+      {formatOrderStatus(status)}
     </span>
   );
+}
+
+function formatOrderStatus(status: OrderStatus) {
+  if (status === "pending_bank_transfer") {
+    return "Awaiting bank transfer";
+  }
+
+  return status.replaceAll("_", " ");
 }

@@ -278,16 +278,23 @@ function CheckoutPage() {
                 disabled={isSubmitting || !hasValidItem || !isDeliveryReady}
                 className="mt-5 w-full px-4 py-3 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity shadow-soft disabled:opacity-60"
               >
-                {isSubmitting ? "Placing order..." : "Place order ✦"}
+                {isSubmitting ? "Saving order..." : "Confirm order and view bank transfer details ✦"}
               </button>
 
               <Link to="/configure" className="block mt-3 text-center text-xs text-muted-foreground hover:text-foreground transition-colors">
                 ← Back to configurator
               </Link>
 
-              <p className="mt-4 text-xs text-muted-foreground text-center italic">
-                Final delivery fees are recalculated securely before confirmation.
-              </p>
+              <div className="mt-4 rounded-2xl border border-border/70 bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
+                <p className="font-medium text-foreground">Bank transfer payment</p>
+                <p className="mt-1">
+                  After submitting your order, you will see the bank details and your payment
+                  reference. We will prepare your order after the transfer is received and approved.
+                </p>
+                <p className="mt-2 italic">
+                  Final delivery fees are recalculated securely before confirmation.
+                </p>
+              </div>
             </aside>
           </form>
         )}

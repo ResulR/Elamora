@@ -1,4 +1,4 @@
-﻿import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { EmptyState } from "@/components/ui-kit/EmptyState";
@@ -17,6 +17,7 @@ export const Route = createFileRoute("/admin/orders/$id")({
 });
 
 const statuses: OrderStatus[] = [
+  "pending_bank_transfer",
   "pending",
   "confirmed",
   "preparing",

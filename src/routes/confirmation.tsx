@@ -1,7 +1,7 @@
-﻿import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Check } from "lucide-react";
+import { Check, Copy } from "lucide-react";
 import { getPublicOrder, type ApiOrder } from "@/lib/orders-api";
 import { formatDate, formatPrice } from "@/lib/format";
 
@@ -71,13 +71,36 @@ function ConfirmationPage() {
 
         <h1 className="font-display text-4xl mt-6">Thank you for your order</h1>
         <p className="mt-3 text-muted-foreground">
-          Your personalized gift bucket has been received. We will contact you soon.
+          Your order has been saved. Please complete the bank transfer using the details below.
+          We will prepare your order after the payment is received and approved.
         </p>
 
         <div className="mt-8 bg-surface/80 border border-border/60 rounded-2xl p-6 shadow-soft text-left">
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5 mb-6">
+            <h2 className="font-display text-xl">Bank transfer instructions</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Please make a bank transfer for the exact total amount. Use your order number as
+              the payment reference so we can match your payment quickly.
+            </p>
+
+            <div className="mt-4 grid sm:grid-cols-2 gap-3">
+              <BankInfo label="Beneficiary" value="elamora" />
+              <BankInfo label="Bank name" value="[a modifier]" />
+              <BankInfo label="IBAN" value="XKX0123456789" copyable />
+              <BankInfo label="Currency" value="EUR" />
+              <BankInfo label="Amount" value={formatPrice(order.totalCents)} />
+              <BankInfo label="Payment reference" value={order.reference} copyable />
+            </div>
+
+            <p className="mt-4 text-xs text-muted-foreground italic">
+              Your order will remain pending until the bank transfer is received and approved by our team.
+              You will receive a confirmation email after approval.
+            </p>
+          </div>
+
           <div className="grid sm:grid-cols-2 gap-4">
             <Info label="Order number" value={order.reference} />
-            <Info label="Status" value={order.status} />
+            <Info label="Status" value={formatOrderStatus(order.status)} />
             <Info label="Created at" value={formatDate(order.createdAt)} />
             <Info label="Total" value={formatPrice(order.totalCents)} />
           </div>
@@ -135,4 +158,42 @@ function Info({ label, value }: { label: string; value: string }) {
       <p className="mt-1 font-medium">{value}</p>
     </div>
   );
+}
+
+function BankInfo({
+  label,
+  value,
+  copyable = false,
+}: {
+  label: string;
+  value: string;
+  copyable?: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-surface px-4 py-3">
+      <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
+      <div className="mt-1 flex items-center justify-between gap-3">
+        <p className="font-medium break-all">{value}</p>
+        {copyable ? (
+          <button
+            type="button"
+            onClick={() => void navigator.clipboard?.writeText(value)}
+            className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+            aria-label={`Copy ${label}`}
+          >
+            <Copy className="h-3 w-3" />
+            Copy
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function formatOrderStatus(status: string) {
+  if (status === "pending_bank_transfer") {
+    return "Awaiting bank transfer";
+  }
+
+  return status.replaceAll("_", " ");
 }

@@ -28,6 +28,7 @@ export interface BucketConfiguration {
 }
 
 export type OrderStatus =
+  | "pending_bank_transfer"
   | "pending"
   | "confirmed"
   | "preparing"
