@@ -89,6 +89,33 @@ interface ApiOrdersResponse {
   error?: string;
 }
 
+export interface BankTransferInfo {
+  beneficiary: string;
+  bankName: string;
+  iban: string;
+  currency: string;
+}
+
+interface BankTransferInfoResponse {
+  ok: boolean;
+  bankTransfer?: BankTransferInfo;
+  error?: string;
+}
+
+export async function getBankTransferInfo(): Promise<BankTransferInfo> {
+  const response = await fetch("/api/bank-transfer-info", {
+    method: "GET",
+  });
+
+  const data = await response.json().catch(() => null) as BankTransferInfoResponse | null;
+
+  if (!response.ok || !data?.ok || !data.bankTransfer) {
+    throw new Error(data?.error || "Could not load bank transfer info");
+  }
+
+  return data.bankTransfer;
+}
+
 export async function createDatabaseOrder(payload: CreateOrderPayload): Promise<ApiOrder> {
   const response = await fetch("/api/orders", {
     method: "POST",

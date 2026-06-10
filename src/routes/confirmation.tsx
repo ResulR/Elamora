@@ -2,7 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Check, Copy } from "lucide-react";
-import { getPublicOrder, type ApiOrder } from "@/lib/orders-api";
+import {
+  getBankTransferInfo,
+  getPublicOrder,
+  type ApiOrder,
+  type BankTransferInfo,
+} from "@/lib/orders-api";
 import { formatDate, formatPrice } from "@/lib/format";
 
 export const Route = createFileRoute("/confirmation")({
@@ -17,6 +22,7 @@ export const Route = createFileRoute("/confirmation")({
 
 function ConfirmationPage() {
   const [order, setOrder] = useState<ApiOrder | null>(null);
+  const [bankTransferInfo, setBankTransferInfo] = useState<BankTransferInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -29,9 +35,15 @@ function ConfirmationPage() {
       return;
     }
 
-    getPublicOrder(reference, token)
-      .then(setOrder)
-      .catch(() => setOrder(null))
+    Promise.all([getPublicOrder(reference, token), getBankTransferInfo()])
+      .then(([loadedOrder, loadedBankTransferInfo]) => {
+        setOrder(loadedOrder);
+        setBankTransferInfo(loadedBankTransferInfo);
+      })
+      .catch(() => {
+        setOrder(null);
+        setBankTransferInfo(null);
+      })
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -86,10 +98,10 @@ function ConfirmationPage() {
             </p>
 
             <div className="mt-4 grid sm:grid-cols-2 gap-3">
-              <BankInfo label="Beneficiary" value="elamora" />
-              <BankInfo label="Bank name" value="[a modifier]" />
-              <BankInfo label="IBAN" value="XKX0123456789" copyable />
-              <BankInfo label="Currency" value="EUR" />
+              <BankInfo label="Beneficiary" value={bankTransferInfo?.beneficiary ?? "-"} />
+              <BankInfo label="Bank name" value={bankTransferInfo?.bankName ?? "-"} />
+              <BankInfo label="IBAN" value={bankTransferInfo?.iban ?? "-"} copyable />
+              <BankInfo label="Currency" value={bankTransferInfo?.currency ?? "EUR"} />
               <BankInfo label="Amount" value={formatPrice(order.totalCents)} />
               <BankInfo label="Payment reference" value={order.reference} copyable />
             </div>

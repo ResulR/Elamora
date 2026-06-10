@@ -99,6 +99,14 @@ function hashConfirmationToken(token: string) {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
+app.get("/api/bank-transfer-info", async (_req: Request, res: Response) => {
+  return res.json({
+    ok: true,
+    bankTransfer: config.bankTransfer,
+  });
+});
+
+
 app.get("/api/health", async (_req: Request, res: Response) => {
   try {
     const dbOk = await checkDatabase();

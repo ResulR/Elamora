@@ -1,4 +1,4 @@
-﻿import "dotenv/config";
+import "dotenv/config";
 import { z } from "zod";
 
 const envSchema = z.object({
@@ -11,6 +11,10 @@ const envSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),
+  BANK_BENEFICIARY: z.string().trim().min(1).optional(),
+  BANK_NAME: z.string().trim().min(1).optional(),
+  BANK_IBAN: z.string().trim().min(1).optional(),
+  BANK_CURRENCY: z.string().trim().min(1).default("EUR"),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -21,6 +25,34 @@ if (!parsed.success) {
   process.exit(1);
 }
 
+const bankTransferPlaceholders = new Set([
+  "",
+  "elamora",
+  "[a modifier]",
+  "XKX0123456789",
+]);
+
+const bankTransferConfigEntries = [
+  ["BANK_BENEFICIARY", parsed.data.BANK_BENEFICIARY],
+  ["BANK_NAME", parsed.data.BANK_NAME],
+  ["BANK_IBAN", parsed.data.BANK_IBAN],
+  ["BANK_CURRENCY", parsed.data.BANK_CURRENCY],
+] as const;
+
+const invalidBankTransferConfigEntries = bankTransferConfigEntries.filter(
+  ([, value]) => !value || bankTransferPlaceholders.has(String(value))
+);
+
+if (parsed.data.NODE_ENV === "production" && invalidBankTransferConfigEntries.length > 0) {
+  console.error("Invalid production bank transfer configuration");
+  console.error(
+    invalidBankTransferConfigEntries.map(
+      ([key]) => `${key} is missing or still uses a placeholder`
+    )
+  );
+  process.exit(1);
+}
+
 export const config = {
   nodeEnv: parsed.data.NODE_ENV,
   port: parsed.data.PORT,
@@ -28,4 +60,11 @@ export const config = {
   jwtSecret: parsed.data.JWT_SECRET,
   corsOrigin: parsed.data.CORS_ORIGIN,
   cookieSecure: parsed.data.COOKIE_SECURE,
+  bankTransfer: {
+    configured: invalidBankTransferConfigEntries.length === 0,
+    beneficiary: parsed.data.BANK_BENEFICIARY ?? "",
+    bankName: parsed.data.BANK_NAME ?? "",
+    iban: parsed.data.BANK_IBAN ?? "",
+    currency: parsed.data.BANK_CURRENCY,
+  },
 };
