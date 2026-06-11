@@ -24,24 +24,27 @@ export function AdminSidebar({ adminEmail }: { adminEmail: string }) {
   };
 
   return (
-    <aside className="w-60 shrink-0 border-r border-border/60 bg-surface/60 backdrop-blur-sm hidden md:flex md:flex-col">
-      <div className="h-16 flex items-center gap-2 px-5 border-b border-border/60">
-        <span className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+    <aside className="w-64 shrink-0 border-r border-primary/15 bg-surface/75 backdrop-blur-md hidden md:flex md:flex-col shadow-soft">
+      <div className="h-16 flex items-center gap-3 px-5 border-b border-primary/15">
+        <span className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-soft">
           <Flower2 className="h-4 w-4" />
         </span>
-        <span className="font-display text-base">Admin</span>
+        <div>
+          <span className="font-display text-lg leading-tight block">Elamora</span>
+          <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Admin</span>
+        </div>
       </div>
-      <nav className="flex-1 p-3 space-y-1">
+      <nav className="flex-1 p-4 space-y-1.5">
         {items.map(({ to, label, icon: Icon, exact }) => {
           const active = exact ? pathname === to : pathname.startsWith(to);
           return (
             <Link
               key={to}
               to={to}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm transition-colors ${
                 active
                   ? "bg-primary text-primary-foreground shadow-soft"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  : "text-muted-foreground hover:bg-primary-soft/35 hover:text-foreground"
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -50,12 +53,12 @@ export function AdminSidebar({ adminEmail }: { adminEmail: string }) {
           );
         })}
       </nav>
-      <div className="p-4 border-t border-border/60 space-y-3">
+      <div className="p-4 border-t border-primary/15 space-y-3">
         <p className="text-xs text-muted-foreground break-all">{adminEmail}</p>
         <button
           type="button"
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="w-full flex items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-background/60 px-3 py-2.5 text-sm text-muted-foreground hover:bg-primary-soft/30 hover:text-foreground transition-colors"
         >
           <LogOut className="h-4 w-4" />
           Logout
