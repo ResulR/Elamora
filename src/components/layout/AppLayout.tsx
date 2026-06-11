@@ -26,6 +26,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <Link to="/configure" className="hover:text-foreground transition-colors">Create a gift</Link>
               <a href="/#how" className="hover:text-foreground transition-colors">How it works</a>
               <Link to="/legal/cgv" className="hover:text-foreground transition-colors">Terms of Sale</Link>
+              <Link to="/legal/mentions" className="hover:text-foreground transition-colors">Legal Notice</Link>
             </nav>
 
             {/* Copyright */}

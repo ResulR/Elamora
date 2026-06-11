@@ -15,6 +15,7 @@ import { Route as ConfigureRouteImport } from './routes/configure'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as LegalMentionsRouteImport } from './routes/legal.mentions'
 import { Route as LegalCgvRouteImport } from './routes/legal.cgv'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminProductsRouteImport } from './routes/admin.products'
@@ -49,6 +50,11 @@ const IndexRoute = IndexRouteImport.update({
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalMentionsRoute = LegalMentionsRouteImport.update({
+  id: '/legal/mentions',
+  path: '/legal/mentions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LegalCgvRoute = LegalCgvRouteImport.update({
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/legal/cgv': typeof LegalCgvRoute
+  '/legal/mentions': typeof LegalMentionsRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/admin/orders/': typeof AdminOrdersIndexRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByTo {
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/legal/cgv': typeof LegalCgvRoute
+  '/legal/mentions': typeof LegalMentionsRoute
   '/admin': typeof AdminIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/admin/orders': typeof AdminOrdersIndexRoute
@@ -113,6 +121,7 @@ export interface FileRoutesById {
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/legal/cgv': typeof LegalCgvRoute
+  '/legal/mentions': typeof LegalMentionsRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/admin/orders/': typeof AdminOrdersIndexRoute
@@ -128,6 +137,7 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/settings'
     | '/legal/cgv'
+    | '/legal/mentions'
     | '/admin/'
     | '/admin/orders/$id'
     | '/admin/orders/'
@@ -141,6 +151,7 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/settings'
     | '/legal/cgv'
+    | '/legal/mentions'
     | '/admin'
     | '/admin/orders/$id'
     | '/admin/orders'
@@ -154,6 +165,7 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/settings'
     | '/legal/cgv'
+    | '/legal/mentions'
     | '/admin/'
     | '/admin/orders/$id'
     | '/admin/orders/'
@@ -168,6 +180,7 @@ export interface RootRouteChildren {
   AdminProductsRoute: typeof AdminProductsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   LegalCgvRoute: typeof LegalCgvRoute
+  LegalMentionsRoute: typeof LegalMentionsRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminOrdersIdRoute: typeof AdminOrdersIdRoute
   AdminOrdersIndexRoute: typeof AdminOrdersIndexRoute
@@ -217,6 +230,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/legal/mentions': {
+      id: '/legal/mentions'
+      path: '/legal/mentions'
+      fullPath: '/legal/mentions'
+      preLoaderRoute: typeof LegalMentionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/legal/cgv': {
       id: '/legal/cgv'
       path: '/legal/cgv'
@@ -264,6 +284,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminProductsRoute: AdminProductsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   LegalCgvRoute: LegalCgvRoute,
+  LegalMentionsRoute: LegalMentionsRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminOrdersIdRoute: AdminOrdersIdRoute,
   AdminOrdersIndexRoute: AdminOrdersIndexRoute,
