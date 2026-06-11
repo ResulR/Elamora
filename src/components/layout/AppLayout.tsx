@@ -29,6 +29,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <Link to="/legal/mentions" className="hover:text-foreground transition-colors">Legal Notice</Link>
               <Link to="/legal/confidentialite" className="hover:text-foreground transition-colors">Privacy Policy</Link>
               <Link to="/legal/cookies" className="hover:text-foreground transition-colors">Cookie Policy</Link>
+              <Link to="/legal/shipping" className="hover:text-foreground transition-colors">Shipping</Link>
+              <Link to="/legal/returns" className="hover:text-foreground transition-colors">Returns</Link>
             </nav>
 
             {/* Copyright */}

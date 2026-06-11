@@ -15,6 +15,8 @@ import { Route as ConfigureRouteImport } from './routes/configure'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as LegalShippingRouteImport } from './routes/legal.shipping'
+import { Route as LegalReturnsRouteImport } from './routes/legal.returns'
 import { Route as LegalMentionsRouteImport } from './routes/legal.mentions'
 import { Route as LegalCookiesRouteImport } from './routes/legal.cookies'
 import { Route as LegalConfidentialiteRouteImport } from './routes/legal.confidentialite'
@@ -52,6 +54,16 @@ const IndexRoute = IndexRouteImport.update({
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalShippingRoute = LegalShippingRouteImport.update({
+  id: '/legal/shipping',
+  path: '/legal/shipping',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalReturnsRoute = LegalReturnsRouteImport.update({
+  id: '/legal/returns',
+  path: '/legal/returns',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LegalMentionsRoute = LegalMentionsRouteImport.update({
@@ -107,6 +119,8 @@ export interface FileRoutesByFullPath {
   '/legal/confidentialite': typeof LegalConfidentialiteRoute
   '/legal/cookies': typeof LegalCookiesRoute
   '/legal/mentions': typeof LegalMentionsRoute
+  '/legal/returns': typeof LegalReturnsRoute
+  '/legal/shipping': typeof LegalShippingRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/admin/orders/': typeof AdminOrdersIndexRoute
@@ -123,6 +137,8 @@ export interface FileRoutesByTo {
   '/legal/confidentialite': typeof LegalConfidentialiteRoute
   '/legal/cookies': typeof LegalCookiesRoute
   '/legal/mentions': typeof LegalMentionsRoute
+  '/legal/returns': typeof LegalReturnsRoute
+  '/legal/shipping': typeof LegalShippingRoute
   '/admin': typeof AdminIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/admin/orders': typeof AdminOrdersIndexRoute
@@ -140,6 +156,8 @@ export interface FileRoutesById {
   '/legal/confidentialite': typeof LegalConfidentialiteRoute
   '/legal/cookies': typeof LegalCookiesRoute
   '/legal/mentions': typeof LegalMentionsRoute
+  '/legal/returns': typeof LegalReturnsRoute
+  '/legal/shipping': typeof LegalShippingRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/admin/orders/': typeof AdminOrdersIndexRoute
@@ -158,6 +176,8 @@ export interface FileRouteTypes {
     | '/legal/confidentialite'
     | '/legal/cookies'
     | '/legal/mentions'
+    | '/legal/returns'
+    | '/legal/shipping'
     | '/admin/'
     | '/admin/orders/$id'
     | '/admin/orders/'
@@ -174,6 +194,8 @@ export interface FileRouteTypes {
     | '/legal/confidentialite'
     | '/legal/cookies'
     | '/legal/mentions'
+    | '/legal/returns'
+    | '/legal/shipping'
     | '/admin'
     | '/admin/orders/$id'
     | '/admin/orders'
@@ -190,6 +212,8 @@ export interface FileRouteTypes {
     | '/legal/confidentialite'
     | '/legal/cookies'
     | '/legal/mentions'
+    | '/legal/returns'
+    | '/legal/shipping'
     | '/admin/'
     | '/admin/orders/$id'
     | '/admin/orders/'
@@ -207,6 +231,8 @@ export interface RootRouteChildren {
   LegalConfidentialiteRoute: typeof LegalConfidentialiteRoute
   LegalCookiesRoute: typeof LegalCookiesRoute
   LegalMentionsRoute: typeof LegalMentionsRoute
+  LegalReturnsRoute: typeof LegalReturnsRoute
+  LegalShippingRoute: typeof LegalShippingRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminOrdersIdRoute: typeof AdminOrdersIdRoute
   AdminOrdersIndexRoute: typeof AdminOrdersIndexRoute
@@ -254,6 +280,20 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/shipping': {
+      id: '/legal/shipping'
+      path: '/legal/shipping'
+      fullPath: '/legal/shipping'
+      preLoaderRoute: typeof LegalShippingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/returns': {
+      id: '/legal/returns'
+      path: '/legal/returns'
+      fullPath: '/legal/returns'
+      preLoaderRoute: typeof LegalReturnsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/legal/mentions': {
@@ -327,6 +367,8 @@ const rootRouteChildren: RootRouteChildren = {
   LegalConfidentialiteRoute: LegalConfidentialiteRoute,
   LegalCookiesRoute: LegalCookiesRoute,
   LegalMentionsRoute: LegalMentionsRoute,
+  LegalReturnsRoute: LegalReturnsRoute,
+  LegalShippingRoute: LegalShippingRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminOrdersIdRoute: AdminOrdersIdRoute,
   AdminOrdersIndexRoute: AdminOrdersIndexRoute,
