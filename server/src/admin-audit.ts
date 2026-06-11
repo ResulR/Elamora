@@ -1,5 +1,6 @@
 import type { AdminRequest } from "./middleware/require-admin.js";
 import { pool } from "./db.js";
+import { logError } from "./logger.js";
 
 type AuditPayload = Record<string, unknown>;
 
@@ -82,11 +83,10 @@ export async function logAdminAction(
       ]
     );
   } catch (error) {
-    console.error("admin_audit_log_failed", {
+    logError(error, "admin_audit_log_failed", {
       action: input.action,
       targetType: input.targetType,
       targetId: input.targetId ?? null,
-      error,
     });
   }
 }

@@ -14,6 +14,7 @@ import { config } from "./config.js";
 import { checkDatabase, pool } from "./db.js";
 import { sendAdminNewOrderEmail, sendOrderPaidEmail, sendOrderStatusNotificationEmail } from "./email.js";
 import { logAdminAction } from "./admin-audit.js";
+import { logger, logError } from "./logger.js";
 import { requireAdmin, type AdminRequest } from "./middleware/require-admin.js";
 
 const app = express();
@@ -242,7 +243,7 @@ app.get("/api/catalog", async (_req: Request, res: Response) => {
       colors: colorsResult.rows.map(mapProductColorRow),
     });
   } catch (error) {
-    console.error(error);
+    logError(error, "request_failed");
 
     return res.status(500).json({
       ok: false,
@@ -307,7 +308,7 @@ app.get("/api/shipping/quote", publicOrderLimiter, async (req: Request, res: Res
       zone_name: zone.name,
     });
   } catch (error) {
-    console.error(error);
+    logError(error, "request_failed");
 
     return res.status(500).json({
       ok: false,
@@ -346,7 +347,7 @@ app.get("/api/shipping/availability", publicOrderLimiter, async (req: Request, r
       slots: availability.slots,
     });
   } catch (error) {
-    console.error(error);
+    logError(error, "request_failed");
 
     return res.status(500).json({
       ok: false,
@@ -633,7 +634,7 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
     });
   } catch (error) {
     await client.query("ROLLBACK");
-    console.error(error);
+    logError(error, "request_failed");
 
     return res.status(500).json({
       ok: false,
@@ -833,7 +834,7 @@ app.get("/api/admin/catalog", requireAdmin, async (_req: AdminRequest, res: Resp
       colors: colorsResult.rows.map(mapProductColorRow),
     });
   } catch (error) {
-    console.error(error);
+    logError(error, "request_failed");
 
     return res.status(500).json({
       ok: false,
@@ -1703,7 +1704,8 @@ async function sendAdminNewOrderEmailForOrder(orderId: string) {
   const adminEmail = config.email.adminNotificationEmail;
 
   if (!adminEmail) {
-    console.error("admin_new_order_email_skipped", {
+    logger.warn({
+      event: "admin_new_order_email_skipped",
       orderId,
       error: "admin_notification_email_not_configured",
     });
@@ -1780,7 +1782,8 @@ async function sendAdminNewOrderEmailForOrder(orderId: string) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown_email_error";
 
-    console.error("admin_new_order_email_failed", {
+    logger.error({
+      event: "admin_new_order_email_failed",
       orderId,
       notificationId: notification.id,
       error: message,
@@ -1864,7 +1867,8 @@ async function sendOrderStatusNotificationEmailForOrder(
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown_email_error";
 
-    console.error("order_status_notification_email_failed", {
+    logger.error({
+      event: "order_status_notification_email_failed",
       orderId,
       notificationId: notification.id,
       notificationType,
@@ -1951,7 +1955,8 @@ async function sendPaymentConfirmedEmailForOrder(orderId: string) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown_email_error";
 
-    console.error("payment_confirmed_email_failed", {
+    logger.error({
+      event: "payment_confirmed_email_failed",
       orderId,
       notificationId: notification.id,
       error: message,
@@ -1974,7 +1979,7 @@ app.use((_req: Request, res: Response) => {
 });
 
 app.listen(config.port, "127.0.0.1", () => {
-  console.log(`Elamora API listening on 127.0.0.1:${config.port}`);
+  logger.info({ port: config.port }, "elamora_api_listening");
 });
 
 
