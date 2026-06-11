@@ -21,10 +21,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </div>
 
             {/* Links */}
-            <nav className="flex items-center gap-6 text-xs text-muted-foreground">
-              <a href="#creations" className="hover:text-foreground transition-colors">Creations</a>
+            <nav className="flex flex-wrap items-center justify-center gap-5 text-xs text-muted-foreground sm:justify-end">
+              <a href="/#creations" className="hover:text-foreground transition-colors">Creations</a>
               <Link to="/configure" className="hover:text-foreground transition-colors">Create a gift</Link>
-              <a href="#how" className="hover:text-foreground transition-colors">How it works</a>
+              <a href="/#how" className="hover:text-foreground transition-colors">How it works</a>
+              <Link to="/legal/cgv" className="hover:text-foreground transition-colors">Terms of Sale</Link>
             </nav>
 
             {/* Copyright */}
