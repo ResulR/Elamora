@@ -65,13 +65,13 @@ function AdminProductsPage() {
 
   return (
     <AdminLayout title="Products">
-      <div className="flex justify-between items-center mb-6 gap-4 flex-wrap">
-        <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-4 mb-6">
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 md:mx-0 md:px-0 md:flex-wrap">
           {categories.map((c) => (
             <button
               key={c.value}
               onClick={() => setTab(c.value)}
-              className={`px-4 py-1.5 rounded-full text-sm border transition-colors ${
+              className={`px-4 py-2 rounded-full text-sm border transition-colors whitespace-nowrap ${
                 tab === c.value
                   ? "bg-primary text-primary-foreground border-primary"
                   : "bg-surface border-border hover:border-primary/60"
@@ -81,10 +81,11 @@ function AdminProductsPage() {
             </button>
           ))}
         </div>
+
         <button
           disabled
           title="Product creation will be added in the next task."
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted text-muted-foreground text-sm cursor-not-allowed"
+          className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-muted text-muted-foreground text-sm cursor-not-allowed md:self-end"
         >
           <Plus className="h-4 w-4" /> Add
         </button>
@@ -96,82 +97,156 @@ function AdminProductsPage() {
         </div>
       ) : null}
 
-      <div className="bg-surface/80 border border-border/60 rounded-2xl overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
-            <tr>
-              <th className="text-left px-5 py-3">Name</th>
-              <th className="text-left px-5 py-3">DB ID</th>
-              <th className="text-left px-5 py-3">Price</th>
-              <th className="text-left px-5 py-3">Status</th>
-              <th className="text-right px-5 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={5} className="px-5 py-8 text-center text-muted-foreground">
-                  Loading products from database...
-                </td>
-              </tr>
-            ) : items.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-5 py-8 text-center text-muted-foreground">
-                  No products found for this category.
-                </td>
-              </tr>
-            ) : (
-              items.map((p) => (
-                <tr key={p.dbId ?? p.id} className="border-t border-border/60">
-                  <td className="px-5 py-3 flex items-center gap-3">
-                    {p.colorHex && (
-                      <span
-                        className="h-5 w-5 rounded-full border border-border"
-                        style={{ background: p.colorHex }}
-                      />
-                    )}
-                    {p.name}
-                  </td>
-                  <td className="px-5 py-3 text-xs text-muted-foreground font-mono">
-                    {p.dbId ?? "—"}
-                  </td>
-                  <td className="px-5 py-3">{formatPrice(p.price)}</td>
-                  <td className="px-5 py-3">
-                    <span
-                      className={`inline-block px-2.5 py-0.5 rounded-full text-xs ${
-                        p.active
-                          ? "bg-success/20 text-success-foreground"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {p.active ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-right space-x-2">
-                    <button
-                      disabled
-                      title="Editing will be added in a later task."
-                      className="inline-flex items-center gap-1 text-xs text-muted-foreground cursor-not-allowed opacity-60"
-                    >
-                      <Pencil className="h-3.5 w-3.5" /> Edit
-                    </button>
-                    <button
-                      disabled
-                      title="Disable/enable will be added in a later task."
-                      className="inline-flex items-center gap-1 text-xs text-muted-foreground cursor-not-allowed opacity-60"
-                    >
-                      <EyeOff className="h-3.5 w-3.5" /> Disable
-                    </button>
-                  </td>
+      {isLoading ? (
+        <div className="bg-surface/80 border border-border/60 rounded-2xl p-8 text-center text-sm text-muted-foreground">
+          Loading products from database...
+        </div>
+      ) : items.length === 0 ? (
+        <div className="bg-surface/80 border border-border/60 rounded-2xl p-8 text-center text-sm text-muted-foreground">
+          No products found for this category.
+        </div>
+      ) : (
+        <>
+          <div className="md:hidden space-y-3">
+            {items.map((product) => (
+              <ProductMobileCard key={product.dbId ?? product.id} product={product} />
+            ))}
+          </div>
+
+          <div className="hidden md:block bg-surface/80 border border-border/60 rounded-2xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="text-left px-5 py-3">Name</th>
+                  <th className="text-left px-5 py-3">DB ID</th>
+                  <th className="text-left px-5 py-3">Price</th>
+                  <th className="text-left px-5 py-3">Status</th>
+                  <th className="text-right px-5 py-3">Actions</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {items.map((p) => (
+                  <tr key={p.dbId ?? p.id} className="border-t border-border/60">
+                    <td className="px-5 py-3 flex items-center gap-3">
+                      <ProductMarker product={p} />
+                      {p.name}
+                    </td>
+                    <td className="px-5 py-3 text-xs text-muted-foreground font-mono">
+                      {p.dbId ?? "—"}
+                    </td>
+                    <td className="px-5 py-3">{formatProductPrice(p)}</td>
+                    <td className="px-5 py-3">
+                      <StatusBadge active={p.active} />
+                    </td>
+                    <td className="px-5 py-3 text-right space-x-2">
+                      <DisabledAction icon={<Pencil className="h-3.5 w-3.5" />} label="Edit" />
+                      <DisabledAction icon={<EyeOff className="h-3.5 w-3.5" />} label="Disable" />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
       <p className="mt-4 text-xs italic text-muted-foreground">
         Products are now read from PostgreSQL. Create, edit and disable actions are intentionally disabled until the next admin products task.
       </p>
     </AdminLayout>
   );
+}
+
+function ProductMobileCard({ product }: { product: Product }) {
+  return (
+    <article className="bg-surface/80 border border-border/60 rounded-2xl p-4 shadow-soft">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-3">
+            <ProductMarker product={product} />
+            <p className="font-semibold truncate">{product.name}</p>
+          </div>
+
+          <p className="text-sm text-muted-foreground capitalize mt-2">
+            {formatCategory(product.category)}
+          </p>
+        </div>
+
+        <p className="font-display text-base whitespace-nowrap">
+          {formatProductPrice(product)}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-2 mt-4">
+        <StatusBadge active={product.active} />
+        <span className="inline-flex rounded-full border border-border px-2.5 py-1 text-xs capitalize">
+          {formatCategory(product.category)}
+        </span>
+      </div>
+
+      <div className="mt-4 pt-4 border-t border-border/60">
+        <p className="text-xs text-muted-foreground break-all font-mono">
+          {product.dbId ?? "No database ID"}
+        </p>
+
+        <div className="flex justify-end gap-4 mt-4">
+          <DisabledAction icon={<Pencil className="h-3.5 w-3.5" />} label="Edit" />
+          <DisabledAction icon={<EyeOff className="h-3.5 w-3.5" />} label="Disable" />
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function ProductMarker({ product }: { product: Product }) {
+  if (product.colorHex) {
+    return (
+      <span
+        className="h-5 w-5 rounded-full border border-border shrink-0"
+        style={{ background: product.colorHex }}
+      />
+    );
+  }
+
+  return (
+    <span className="h-5 w-5 rounded-full border border-border bg-primary-soft shrink-0" />
+  );
+}
+
+function StatusBadge({ active }: { active: boolean }) {
+  return (
+    <span
+      className={`inline-flex rounded-full px-2.5 py-1 text-xs ${
+        active
+          ? "bg-success/20 text-success-foreground"
+          : "bg-muted text-muted-foreground"
+      }`}
+    >
+      {active ? "Active" : "Inactive"}
+    </span>
+  );
+}
+
+function DisabledAction({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <button
+      disabled
+      title={`${label} will be added in a later task.`}
+      className="inline-flex items-center gap-1 text-xs text-muted-foreground cursor-not-allowed opacity-60"
+    >
+      {icon} {label}
+    </button>
+  );
+}
+
+function formatProductPrice(product: Product) {
+  return product.category === "color" ? "—" : formatPrice(product.price);
+}
+
+function formatCategory(category: ProductCategory) {
+  if (category === "bucket") return "Bucket";
+  if (category === "flower") return "Flower";
+  if (category === "balloon") return "Balloon";
+  if (category === "plush") return "Plush toy";
+  return "Color";
 }

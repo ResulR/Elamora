@@ -774,19 +774,125 @@ app.get("/api/admin/catalog", requireAdmin, async (_req: AdminRequest, res: Resp
 });
 
 
-app.get("/api/admin/orders", requireAdmin, async (_req: AdminRequest, res: Response) => {
+app.get("/api/admin/orders", requireAdmin, async (req: AdminRequest, res: Response) => {
+  const where: string[] = [];
+  const values: unknown[] = [];
+
+  const addValue = (value: unknown) => {
+    values.push(value);
+    return `$${values.length}`;
+  };
+
+  const status = typeof req.query.status === "string" ? req.query.status.trim() : "";
+  const paymentStatus = typeof req.query.paymentStatus === "string" ? req.query.paymentStatus.trim() : "";
+  const deliveryMethod = typeof req.query.deliveryMethod === "string" ? req.query.deliveryMethod.trim() : "";
+  const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+  const dateFrom = typeof req.query.dateFrom === "string" ? req.query.dateFrom.trim() : "";
+  const dateTo = typeof req.query.dateTo === "string" ? req.query.dateTo.trim() : "";
+
+  const allowedStatuses = new Set([
+    "pending_bank_transfer",
+    "confirmed",
+    "preparing",
+    "ready_for_pickup",
+    "shipped",
+    "completed",
+    "cancelled",
+    "refunded",
+  ]);
+  const allowedPaymentStatuses = new Set(["pending", "paid", "cancelled", "refunded"]);
+  const allowedDeliveryMethods = new Set(["pickup", "delivery"]);
+
+  if (status && status !== "all") {
+    if (!allowedStatuses.has(status)) {
+      return res.status(400).json({ ok: false, error: "Invalid status filter" });
+    }
+
+    where.push(`status = ${addValue(status)}`);
+  }
+
+  if (paymentStatus && paymentStatus !== "all") {
+    if (!allowedPaymentStatuses.has(paymentStatus)) {
+      return res.status(400).json({ ok: false, error: "Invalid payment status filter" });
+    }
+
+    where.push(`payment_status = ${addValue(paymentStatus)}`);
+  }
+
+  if (deliveryMethod && deliveryMethod !== "all") {
+    if (!allowedDeliveryMethods.has(deliveryMethod)) {
+      return res.status(400).json({ ok: false, error: "Invalid delivery method filter" });
+    }
+
+    where.push(`delivery_method = ${addValue(deliveryMethod)}`);
+  }
+
+  if (q) {
+    const search = `%${q}%`;
+    const refParam = addValue(search);
+    const emailParam = addValue(search);
+    where.push(`(reference ILIKE ${refParam} OR customer_email ILIKE ${emailParam})`);
+  }
+
+  if (dateFrom) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateFrom)) {
+      return res.status(400).json({ ok: false, error: "Invalid start date filter" });
+    }
+
+    where.push(`created_at >= ${addValue(dateFrom)}`);
+  }
+
+  if (dateTo) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateTo)) {
+      return res.status(400).json({ ok: false, error: "Invalid end date filter" });
+    }
+
+    where.push(`created_at < (${addValue(dateTo)}::date + interval '1 day')`);
+  }
+
+  const requestedPage = Number.parseInt(String(req.query.page ?? "1"), 10);
+  const requestedPageSize = Number.parseInt(String(req.query.pageSize ?? "20"), 10);
+
+  const page = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const pageSize = Number.isFinite(requestedPageSize)
+    ? Math.min(Math.max(requestedPageSize, 10), 100)
+    : 20;
+  const offset = (page - 1) * pageSize;
+
+  const whereSql = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
+
+  const countResult = await pool.query(
+    `
+      SELECT COUNT(*)::int AS total
+      FROM orders
+      ${whereSql}
+    `,
+    values
+  );
+
+  const total = Number(countResult.rows[0]?.total ?? 0);
+
   const result = await pool.query(
     `
       SELECT *
       FROM orders
+      ${whereSql}
       ORDER BY created_at DESC
-      LIMIT 200
-    `
+      LIMIT ${addValue(pageSize)}
+      OFFSET ${addValue(offset)}
+    `,
+    values
   );
 
   return res.json({
     ok: true,
     orders: result.rows.map(mapOrderRow),
+    pagination: {
+      page,
+      pageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    },
   });
 });
 

@@ -83,10 +83,34 @@ interface ApiOrderResponse {
   error?: string;
 }
 
+export interface AdminOrdersPagination {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
 interface ApiOrdersResponse {
   ok: boolean;
   orders?: ApiOrder[];
+  pagination?: AdminOrdersPagination;
   error?: string;
+}
+
+export interface AdminOrdersFilters {
+  status?: string;
+  paymentStatus?: string;
+  deliveryMethod?: string;
+  q?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface AdminOrdersResult {
+  orders: ApiOrder[];
+  pagination: AdminOrdersPagination;
 }
 
 export interface BankTransferInfo {
@@ -151,8 +175,22 @@ export async function getPublicOrder(reference: string, token: string): Promise<
   return data.order;
 }
 
-export async function getAdminOrders(): Promise<ApiOrder[]> {
-  const response = await fetch("/api/admin/orders", {
+function buildAdminOrdersQuery(filters: AdminOrdersFilters = {}) {
+  const params = new URLSearchParams();
+
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "" || value === "all") return;
+    params.set(key, String(value));
+  });
+
+  const query = params.toString();
+  return query ? `/api/admin/orders?${query}` : "/api/admin/orders";
+}
+
+export async function getAdminOrdersPage(
+  filters: AdminOrdersFilters = {}
+): Promise<AdminOrdersResult> {
+  const response = await fetch(buildAdminOrdersQuery(filters), {
     method: "GET",
     credentials: "include",
   });
@@ -163,7 +201,20 @@ export async function getAdminOrders(): Promise<ApiOrder[]> {
     throw new Error(data?.error || "Could not load orders");
   }
 
-  return data.orders;
+  return {
+    orders: data.orders,
+    pagination: data.pagination ?? {
+      page: filters.page ?? 1,
+      pageSize: filters.pageSize ?? data.orders.length,
+      total: data.orders.length,
+      totalPages: 1,
+    },
+  };
+}
+
+export async function getAdminOrders(): Promise<ApiOrder[]> {
+  const result = await getAdminOrdersPage();
+  return result.orders;
 }
 
 export async function getAdminOrder(reference: string): Promise<ApiOrder> {
