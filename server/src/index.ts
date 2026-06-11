@@ -781,6 +781,184 @@ app.get("/api/admin/catalog", requireAdmin, async (_req: AdminRequest, res: Resp
 });
 
 
+
+function normalizeAdminOrderFilters(query: Request["query"]) {
+  const where: string[] = [];
+  const values: unknown[] = [];
+
+  const addValue = (value: unknown) => {
+    values.push(value);
+    return `$${values.length}`;
+  };
+
+  const status = typeof query.status === "string" ? query.status.trim() : "";
+  const paymentStatus = typeof query.paymentStatus === "string" ? query.paymentStatus.trim() : "";
+  const deliveryMethod = typeof query.deliveryMethod === "string" ? query.deliveryMethod.trim() : "";
+  const q = typeof query.q === "string" ? query.q.trim() : "";
+  const dateFrom = typeof query.dateFrom === "string" ? query.dateFrom.trim() : "";
+  const dateTo = typeof query.dateTo === "string" ? query.dateTo.trim() : "";
+
+  const allowedStatuses = new Set([
+    "pending_bank_transfer",
+    "confirmed",
+    "preparing",
+    "ready_for_pickup",
+    "shipped",
+    "completed",
+    "cancelled",
+    "refunded",
+  ]);
+  const allowedPaymentStatuses = new Set(["pending", "paid", "cancelled", "refunded"]);
+  const allowedDeliveryMethods = new Set(["pickup", "delivery"]);
+
+  if (status && status !== "all") {
+    if (!allowedStatuses.has(status)) {
+      return { ok: false as const, error: "Invalid status filter" };
+    }
+
+    where.push(`status = ${addValue(status)}`);
+  }
+
+  if (paymentStatus && paymentStatus !== "all") {
+    if (!allowedPaymentStatuses.has(paymentStatus)) {
+      return { ok: false as const, error: "Invalid payment status filter" };
+    }
+
+    where.push(`payment_status = ${addValue(paymentStatus)}`);
+  }
+
+  if (deliveryMethod && deliveryMethod !== "all") {
+    if (!allowedDeliveryMethods.has(deliveryMethod)) {
+      return { ok: false as const, error: "Invalid delivery method filter" };
+    }
+
+    where.push(`delivery_method = ${addValue(deliveryMethod)}`);
+  }
+
+  if (q) {
+    const search = `%${q}%`;
+    const refParam = addValue(search);
+    const emailParam = addValue(search);
+    where.push(`(reference ILIKE ${refParam} OR customer_email ILIKE ${emailParam})`);
+  }
+
+  if (dateFrom) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateFrom)) {
+      return { ok: false as const, error: "Invalid start date filter" };
+    }
+
+    where.push(`created_at >= ${addValue(dateFrom)}`);
+  }
+
+  if (dateTo) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateTo)) {
+      return { ok: false as const, error: "Invalid end date filter" };
+    }
+
+    where.push(`created_at < (${addValue(dateTo)}::date + interval '1 day')`);
+  }
+
+  return {
+    ok: true as const,
+    values,
+    whereSql: where.length > 0 ? `WHERE ${where.join(" AND ")}` : "",
+  };
+}
+
+function formatCsvAmount(cents: number | null | undefined) {
+  return ((Number(cents ?? 0)) / 100).toFixed(2);
+}
+
+function formatCsvDate(value: Date | string | null | undefined) {
+  if (!value) return "";
+  return new Date(value).toISOString();
+}
+
+function escapeCsvValue(value: unknown, separator: "," | ";") {
+  const text = String(value ?? "");
+  const escaped = text.replaceAll('"', '""');
+
+  if (
+    escaped.includes('"') ||
+    escaped.includes("\n") ||
+    escaped.includes("\r") ||
+    escaped.includes(separator)
+  ) {
+    return `"${escaped}"`;
+  }
+
+  return escaped;
+}
+
+function buildOrdersCsv(rows: any[], options: { excel: boolean }) {
+  const separator = options.excel ? ";" : ",";
+
+  const headers = [
+    "reference",
+    "created_at",
+    "customer_name",
+    "customer_email",
+    "status",
+    "payment_status",
+    "payment_provider",
+    "payment_reference",
+    "delivery_method",
+    "subtotal",
+    "shipping",
+    "tax",
+    "total",
+    "currency",
+    "paid_at",
+    "tracking_carrier",
+    "tracking_number",
+  ];
+
+  const lines = rows.map((row) => {
+    const customerName = [row.customer_first_name, row.customer_last_name]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+    const values = [
+      row.reference,
+      formatCsvDate(row.created_at),
+      customerName,
+      row.customer_email,
+      row.status,
+      row.payment_status,
+      row.payment_provider,
+      row.payment_reference || row.reference,
+      row.delivery_method,
+      formatCsvAmount(row.subtotal_cents),
+      formatCsvAmount(row.shipping_cents),
+      formatCsvAmount(row.tax_cents),
+      formatCsvAmount(row.total_cents),
+      "EUR",
+      formatCsvDate(row.paid_at),
+      row.tracking_carrier,
+      row.tracking_number,
+    ];
+
+    return values.map((value) => escapeCsvValue(value, separator)).join(separator);
+  });
+
+  const body = [
+    ...(options.excel ? ["sep=;"] : []),
+    headers.map((value) => escapeCsvValue(value, separator)).join(separator),
+    ...lines,
+  ].join("\r\n");
+
+  return options.excel ? `\ufeff${body}\r\n` : `${body}\r\n`;
+}
+
+function buildOrdersExportFilename(format: string) {
+  const date = new Date().toISOString().slice(0, 10);
+  return format === "excel"
+    ? `elamora-orders-excel-${date}.csv`
+    : `elamora-orders-${date}.csv`;
+}
+
+
 app.get("/api/admin/orders", requireAdmin, async (req: AdminRequest, res: Response) => {
   const where: string[] = [];
   const values: unknown[] = [];
@@ -902,6 +1080,37 @@ app.get("/api/admin/orders", requireAdmin, async (req: AdminRequest, res: Respon
     },
   });
 });
+
+
+app.get("/api/admin/orders/export.csv", requireAdmin, async (req: AdminRequest, res: Response) => {
+  const filters = normalizeAdminOrderFilters(req.query);
+
+  if (!filters.ok) {
+    return res.status(400).json({ ok: false, error: filters.error });
+  }
+
+  const result = await pool.query(
+    `
+      SELECT *
+      FROM orders
+      ${filters.whereSql}
+      ORDER BY created_at DESC
+    `,
+    filters.values
+  );
+
+  const format = typeof req.query.format === "string" ? req.query.format.trim() : "";
+  const excel = format === "excel";
+  const csv = buildOrdersCsv(result.rows, { excel });
+  const filename = buildOrdersExportFilename(format);
+
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.setHeader("Cache-Control", "no-store");
+
+  return res.send(csv);
+});
+
 
 app.get("/api/admin/orders/:reference", requireAdmin, async (req: AdminRequest, res: Response) => {
   const orderResult = await pool.query(

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { EmptyState } from "@/components/ui-kit/EmptyState";
 import {
+  buildAdminOrdersExportUrl,
   getAdminOrdersPage,
   type AdminOrdersPagination,
   type ApiOrder,
@@ -125,6 +126,20 @@ function AdminOrdersPage() {
     setPage(1);
   };
 
+  const openExport = (format: "csv" | "excel") => {
+    window.location.href = buildAdminOrdersExportUrl(
+      {
+        status,
+        paymentStatus,
+        deliveryMethod,
+        q: debouncedQuery,
+        dateFrom,
+        dateTo,
+      },
+      format
+    );
+  };
+
   const hasActiveFilters =
     status !== "all" ||
     paymentStatus !== "all" ||
@@ -213,19 +228,37 @@ function AdminOrdersPage() {
         </div>
       </section>
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 mb-4">
         <p className="text-sm text-muted-foreground">
           {isLoading
             ? "Loading orders..."
             : `${pagination.total} order${pagination.total === 1 ? "" : "s"} found`}
         </p>
 
-        <PaginationControls
-          pagination={pagination}
-          isLoading={isLoading}
-          onPrevious={() => setPage((current) => Math.max(1, current - 1))}
-          onNext={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
-        />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <button
+            type="button"
+            onClick={() => openExport("csv")}
+            className="h-10 px-4 rounded-xl border border-border text-sm hover:border-primary/60 transition-colors"
+          >
+            Export CSV
+          </button>
+
+          <button
+            type="button"
+            onClick={() => openExport("excel")}
+            className="h-10 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+          >
+            Export Excel
+          </button>
+
+          <PaginationControls
+            pagination={pagination}
+            isLoading={isLoading}
+            onPrevious={() => setPage((current) => Math.max(1, current - 1))}
+            onNext={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
+          />
+        </div>
       </div>
 
       {isLoading ? (

@@ -189,6 +189,36 @@ function buildAdminOrdersQuery(filters: AdminOrdersFilters = {}) {
   return query ? `/api/admin/orders?${query}` : "/api/admin/orders";
 }
 
+
+export function buildAdminOrdersExportUrl(
+  filters: AdminOrdersFilters = {},
+  format: "csv" | "excel" = "csv"
+) {
+  const params = new URLSearchParams();
+
+  Object.entries(filters).forEach(([key, value]) => {
+    if (
+      key === "page" ||
+      key === "pageSize" ||
+      value === undefined ||
+      value === null ||
+      value === "" ||
+      value === "all"
+    ) {
+      return;
+    }
+
+    params.set(key, String(value));
+  });
+
+  if (format === "excel") {
+    params.set("format", "excel");
+  }
+
+  const query = params.toString();
+  return query ? `/api/admin/orders/export.csv?${query}` : "/api/admin/orders/export.csv";
+}
+
 export async function getAdminOrdersPage(
   filters: AdminOrdersFilters = {}
 ): Promise<AdminOrdersResult> {
