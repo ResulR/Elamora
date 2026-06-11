@@ -16,6 +16,7 @@ import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as LegalMentionsRouteImport } from './routes/legal.mentions'
+import { Route as LegalConfidentialiteRouteImport } from './routes/legal.confidentialite'
 import { Route as LegalCgvRouteImport } from './routes/legal.cgv'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminProductsRouteImport } from './routes/admin.products'
@@ -57,6 +58,11 @@ const LegalMentionsRoute = LegalMentionsRouteImport.update({
   path: '/legal/mentions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LegalConfidentialiteRoute = LegalConfidentialiteRouteImport.update({
+  id: '/legal/confidentialite',
+  path: '/legal/confidentialite',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LegalCgvRoute = LegalCgvRouteImport.update({
   id: '/legal/cgv',
   path: '/legal/cgv',
@@ -92,6 +98,7 @@ export interface FileRoutesByFullPath {
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/legal/cgv': typeof LegalCgvRoute
+  '/legal/confidentialite': typeof LegalConfidentialiteRoute
   '/legal/mentions': typeof LegalMentionsRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
@@ -106,6 +113,7 @@ export interface FileRoutesByTo {
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/legal/cgv': typeof LegalCgvRoute
+  '/legal/confidentialite': typeof LegalConfidentialiteRoute
   '/legal/mentions': typeof LegalMentionsRoute
   '/admin': typeof AdminIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
@@ -121,6 +129,7 @@ export interface FileRoutesById {
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/legal/cgv': typeof LegalCgvRoute
+  '/legal/confidentialite': typeof LegalConfidentialiteRoute
   '/legal/mentions': typeof LegalMentionsRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
@@ -137,6 +146,7 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/settings'
     | '/legal/cgv'
+    | '/legal/confidentialite'
     | '/legal/mentions'
     | '/admin/'
     | '/admin/orders/$id'
@@ -151,6 +161,7 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/settings'
     | '/legal/cgv'
+    | '/legal/confidentialite'
     | '/legal/mentions'
     | '/admin'
     | '/admin/orders/$id'
@@ -165,6 +176,7 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/settings'
     | '/legal/cgv'
+    | '/legal/confidentialite'
     | '/legal/mentions'
     | '/admin/'
     | '/admin/orders/$id'
@@ -180,6 +192,7 @@ export interface RootRouteChildren {
   AdminProductsRoute: typeof AdminProductsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   LegalCgvRoute: typeof LegalCgvRoute
+  LegalConfidentialiteRoute: typeof LegalConfidentialiteRoute
   LegalMentionsRoute: typeof LegalMentionsRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminOrdersIdRoute: typeof AdminOrdersIdRoute
@@ -237,6 +250,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LegalMentionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/legal/confidentialite': {
+      id: '/legal/confidentialite'
+      path: '/legal/confidentialite'
+      fullPath: '/legal/confidentialite'
+      preLoaderRoute: typeof LegalConfidentialiteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/legal/cgv': {
       id: '/legal/cgv'
       path: '/legal/cgv'
@@ -284,6 +304,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminProductsRoute: AdminProductsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   LegalCgvRoute: LegalCgvRoute,
+  LegalConfidentialiteRoute: LegalConfidentialiteRoute,
   LegalMentionsRoute: LegalMentionsRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminOrdersIdRoute: AdminOrdersIdRoute,
