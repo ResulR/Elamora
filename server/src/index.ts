@@ -1,9 +1,12 @@
 import crypto from "node:crypto";
+import fs from "node:fs/promises";
+import path from "node:path";
 import express, { type Request, type Response } from "express";
 import helmet from "helmet";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
+import multer from "multer";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
@@ -13,6 +16,22 @@ import { sendAdminNewOrderEmail, sendOrderPaidEmail, sendOrderStatusNotification
 import { requireAdmin, type AdminRequest } from "./middleware/require-admin.js";
 
 const app = express();
+
+const productUploadDir = path.resolve(process.cwd(), "server/public/uploads/products");
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+  fileFilter: (_req, file, callback) => {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) {
+      callback(new Error("Only JPEG, PNG and WebP images are allowed"));
+      return;
+    }
+
+    callback(null, true);
+  },
+});
 
 app.set("trust proxy", 1);
 
@@ -25,6 +44,7 @@ app.use(
 );
 app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
+app.use("/api/uploads", express.static(path.resolve(process.cwd(), "server/public/uploads")));
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -96,6 +116,24 @@ const updateOrderStatusSchema = z.object({
 
 const updateOrderPaymentStatusSchema = z.object({
   paymentStatus: z.enum(["pending", "paid", "cancelled", "refunded"]),
+});
+
+const productPayloadSchema = z.object({
+  categoryCode: z.enum(["bucket", "flower", "balloon", "plush"]),
+  name: z.string().trim().min(1).max(160),
+  description: z.string().trim().max(1000).optional().default(""),
+  priceCents: z.number().int().min(0).max(999999),
+  imageUrl: z.string().trim().max(500).optional().default(""),
+  sortOrder: z.number().int().min(0).max(9999).optional().default(0),
+  isActive: z.boolean().optional().default(true),
+});
+
+const updateProductPayloadSchema = productPayloadSchema.partial().extend({
+  categoryCode: z.enum(["bucket", "flower", "balloon", "plush"]).optional(),
+});
+
+const updateProductActiveSchema = z.object({
+  isActive: z.boolean(),
 });
 
 
@@ -779,6 +817,268 @@ app.get("/api/admin/catalog", requireAdmin, async (_req: AdminRequest, res: Resp
     });
   }
 });
+
+
+app.post("/api/admin/products", requireAdmin, async (req: AdminRequest, res: Response) => {
+  const parsed = productPayloadSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    return res.status(400).json({
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid product payload",
+    });
+  }
+
+  const categoryResult = await pool.query(
+    `
+      SELECT id
+      FROM product_categories
+      WHERE code = $1
+      LIMIT 1
+    `,
+    [parsed.data.categoryCode]
+  );
+
+  const category = categoryResult.rows[0];
+
+  if (!category) {
+    return res.status(400).json({ ok: false, error: "Unknown category" });
+  }
+
+  const result = await pool.query(
+    `
+      INSERT INTO products (
+        category_id,
+        name,
+        description,
+        price_cents,
+        image_url,
+        sort_order,
+        is_active
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *
+    `,
+    [
+      category.id,
+      parsed.data.name,
+      parsed.data.description,
+      parsed.data.priceCents,
+      parsed.data.imageUrl,
+      parsed.data.sortOrder,
+      parsed.data.isActive,
+    ]
+  );
+
+  const productResult = await pool.query(
+    `
+      SELECT
+        p.id,
+        c.code AS category_code,
+        c.name AS category_name,
+        p.name,
+        p.description,
+        p.price_cents,
+        p.image_url,
+        p.sort_order,
+        p.is_active
+      FROM products p
+      JOIN product_categories c ON c.id = p.category_id
+      WHERE p.id = $1
+      LIMIT 1
+    `,
+    [result.rows[0].id]
+  );
+
+  return res.status(201).json({
+    ok: true,
+    product: mapProductRow(productResult.rows[0]),
+  });
+});
+
+app.patch("/api/admin/products/:id", requireAdmin, async (req: AdminRequest, res: Response) => {
+  const parsed = updateProductPayloadSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    return res.status(400).json({
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid product payload",
+    });
+  }
+
+  let categoryId: string | null = null;
+
+  if (parsed.data.categoryCode) {
+    const categoryResult = await pool.query(
+      `
+        SELECT id
+        FROM product_categories
+        WHERE code = $1
+        LIMIT 1
+      `,
+      [parsed.data.categoryCode]
+    );
+
+    const category = categoryResult.rows[0];
+
+    if (!category) {
+      return res.status(400).json({ ok: false, error: "Unknown category" });
+    }
+
+    categoryId = category.id;
+  }
+
+  const result = await pool.query(
+    `
+      UPDATE products
+      SET category_id = COALESCE($2, category_id),
+          name = COALESCE($3, name),
+          description = COALESCE($4, description),
+          price_cents = COALESCE($5, price_cents),
+          image_url = COALESCE($6, image_url),
+          sort_order = COALESCE($7, sort_order),
+          is_active = COALESCE($8, is_active),
+          updated_at = now()
+      WHERE id = $1
+      RETURNING id
+    `,
+    [
+      req.params.id,
+      categoryId,
+      parsed.data.name ?? null,
+      parsed.data.description ?? null,
+      parsed.data.priceCents ?? null,
+      parsed.data.imageUrl ?? null,
+      parsed.data.sortOrder ?? null,
+      parsed.data.isActive ?? null,
+    ]
+  );
+
+  if (!result.rows[0]) {
+    return res.status(404).json({ ok: false, error: "Product not found" });
+  }
+
+  const productResult = await pool.query(
+    `
+      SELECT
+        p.id,
+        c.code AS category_code,
+        c.name AS category_name,
+        p.name,
+        p.description,
+        p.price_cents,
+        p.image_url,
+        p.sort_order,
+        p.is_active
+      FROM products p
+      JOIN product_categories c ON c.id = p.category_id
+      WHERE p.id = $1
+      LIMIT 1
+    `,
+    [req.params.id]
+  );
+
+  return res.json({
+    ok: true,
+    product: mapProductRow(productResult.rows[0]),
+  });
+});
+
+app.patch(
+  "/api/admin/products/:id/active",
+  requireAdmin,
+  async (req: AdminRequest, res: Response) => {
+    const parsed = updateProductActiveSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      return res.status(400).json({ ok: false, error: "Invalid active payload" });
+    }
+
+    const result = await pool.query(
+      `
+        UPDATE products
+        SET is_active = $2,
+            updated_at = now()
+        WHERE id = $1
+        RETURNING id
+      `,
+      [req.params.id, parsed.data.isActive]
+    );
+
+    if (!result.rows[0]) {
+      return res.status(404).json({ ok: false, error: "Product not found" });
+    }
+
+    return res.json({ ok: true });
+  }
+);
+
+app.post(
+  "/api/admin/products/:id/image",
+  requireAdmin,
+  upload.single("image"),
+  async (req: AdminRequest, res: Response) => {
+    if (!req.file) {
+      return res.status(400).json({ ok: false, error: "Image file is required" });
+    }
+
+    const productResult = await pool.query(
+      `
+        SELECT id
+        FROM products
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [req.params.id]
+    );
+
+    if (!productResult.rows[0]) {
+      return res.status(404).json({ ok: false, error: "Product not found" });
+    }
+
+    await fs.mkdir(productUploadDir, { recursive: true });
+
+    const extensionByMime: Record<string, string> = {
+      "image/jpeg": "jpg",
+      "image/png": "png",
+      "image/webp": "webp",
+    };
+
+    const extension = extensionByMime[req.file.mimetype];
+
+    if (!extension) {
+      return res.status(400).json({ ok: false, error: "Unsupported image type" });
+    }
+
+    const filename = `${req.params.id}-${Date.now()}-${crypto.randomBytes(6).toString("hex")}.${extension}`;
+    const filepath = path.join(productUploadDir, filename);
+
+    await fs.writeFile(filepath, req.file.buffer);
+
+    const imageUrl = `/api/uploads/products/${filename}`;
+
+    const updatedResult = await pool.query(
+      `
+        UPDATE products
+        SET image_url = $2,
+            updated_at = now()
+        WHERE id = $1
+        RETURNING id
+      `,
+      [req.params.id, imageUrl]
+    );
+
+    if (!updatedResult.rows[0]) {
+      return res.status(404).json({ ok: false, error: "Product not found" });
+    }
+
+    return res.json({
+      ok: true,
+      imageUrl,
+    });
+  }
+);
+
 
 
 
