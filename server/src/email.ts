@@ -422,6 +422,7 @@ export type OrderStatusNotificationEmailInput = {
   };
   trackingUrl?: string;
   trackingNumber?: string;
+  trackingCarrier?: string;
 };
 
 export function buildOrderStatusNotificationEmail(input: OrderStatusNotificationEmailInput) {
@@ -454,20 +455,22 @@ export function buildOrderStatusNotificationEmail(input: OrderStatusNotification
     .filter(Boolean)
     .join("<br>");
 
-  const trackingHtml = !isReadyForPickup && (input.trackingUrl || input.trackingNumber)
+  const trackingHtml = !isReadyForPickup && (input.trackingUrl || input.trackingNumber || input.trackingCarrier)
     ? `
       <h2 style="font-size:18px;margin:28px 0 8px;">Tracking</h2>
       <p style="margin:0;font-size:15px;line-height:1.6;">
+        ${input.trackingCarrier ? `Carrier: ${escapeHtml(input.trackingCarrier)}<br>` : ""}
         ${input.trackingNumber ? `Tracking number: ${escapeHtml(input.trackingNumber)}<br>` : ""}
         ${input.trackingUrl ? `<a href="${escapeHtml(input.trackingUrl)}">Track your order</a>` : ""}
       </p>
     `
     : "";
 
-  const trackingText = !isReadyForPickup && (input.trackingUrl || input.trackingNumber)
+  const trackingText = !isReadyForPickup && (input.trackingUrl || input.trackingNumber || input.trackingCarrier)
     ? [
         "",
         "Tracking:",
+        input.trackingCarrier ? `Carrier: ${input.trackingCarrier}` : "",
         input.trackingNumber ? `Tracking number: ${input.trackingNumber}` : "",
         input.trackingUrl ? `Tracking link: ${input.trackingUrl}` : "",
       ].filter(Boolean)

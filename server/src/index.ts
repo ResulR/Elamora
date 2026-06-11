@@ -90,7 +90,14 @@ const createOrderSchema = z.object({
 
 const updateOrderStatusSchema = z.object({
   status: orderStatusSchema,
+  trackingNumber: z.string().trim().max(120).optional(),
+  trackingCarrier: z.string().trim().max(120).optional(),
 });
+
+const updateOrderPaymentStatusSchema = z.object({
+  paymentStatus: z.enum(["pending", "paid", "cancelled", "refunded"]),
+});
+
 
 function createConfirmationToken() {
   return crypto.randomBytes(32).toString("hex");
@@ -933,6 +940,78 @@ app.get("/api/admin/orders/:reference", requireAdmin, async (req: AdminRequest, 
 });
 
 app.patch(
+  "/api/admin/orders/:reference/payment-status",
+  requireAdmin,
+  async (req: AdminRequest, res: Response) => {
+    const parsed = updateOrderPaymentStatusSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      return res.status(400).json({
+        ok: false,
+        error: parsed.error.issues[0]?.message ?? "Invalid payment status",
+      });
+    }
+
+    const existingResult = await pool.query(
+      `
+        SELECT status, payment_status
+        FROM orders
+        WHERE reference = $1
+        LIMIT 1
+      `,
+      [req.params.reference]
+    );
+
+    const existingOrder = existingResult.rows[0];
+
+    if (!existingOrder) {
+      return res.status(404).json({ ok: false, error: "Order not found" });
+    }
+
+    if (
+      ["shipped", "completed"].includes(existingOrder.status) &&
+      parsed.data.paymentStatus !== "paid"
+    ) {
+      return res.status(400).json({
+        ok: false,
+        error: "A shipped or completed order cannot be changed back to unpaid",
+      });
+    }
+
+    const result = await pool.query(
+      `
+        UPDATE orders
+        SET payment_status = $1,
+            payment_reference = CASE
+              WHEN $1 = 'paid' THEN COALESCE(payment_reference, reference)
+              ELSE payment_reference
+            END,
+            paid_at = CASE
+              WHEN $1 = 'paid' THEN COALESCE(paid_at, now())
+              ELSE NULL
+            END,
+            status = CASE
+              WHEN $1 = 'paid' AND status = 'pending_bank_transfer' THEN 'confirmed'
+              WHEN $1 = 'pending' THEN 'pending_bank_transfer'
+              WHEN $1 = 'cancelled' THEN 'cancelled'
+              WHEN $1 = 'refunded' THEN 'refunded'
+              ELSE status
+            END,
+            updated_at = now()
+        WHERE reference = $2
+        RETURNING *
+      `,
+      [parsed.data.paymentStatus, req.params.reference]
+    );
+
+    return res.json({
+      ok: true,
+      order: mapOrderRow(result.rows[0]),
+    });
+  }
+);
+
+app.patch(
   "/api/admin/orders/:reference/status",
   requireAdmin,
   async (req: AdminRequest, res: Response) => {
@@ -971,11 +1050,24 @@ app.patch(
             WHEN $1 = 'confirmed' AND paid_at IS NULL THEN now()
             ELSE paid_at
           END,
+          tracking_number = CASE
+            WHEN $1 = 'shipped' THEN NULLIF($3, '')
+            ELSE tracking_number
+          END,
+          tracking_carrier = CASE
+            WHEN $1 = 'shipped' THEN NULLIF($4, '')
+            ELSE tracking_carrier
+          END,
           updated_at = now()
         WHERE reference = $2
         RETURNING *
       `,
-      [parsed.data.status, req.params.reference]
+      [
+      parsed.data.status,
+      req.params.reference,
+      parsed.data.trackingNumber ?? "",
+      parsed.data.trackingCarrier ?? "",
+    ]
     );
 
     const order = result.rows[0];
@@ -1150,6 +1242,8 @@ async function sendOrderStatusNotificationEmailForOrder(
       to: order.customer_email,
       status,
       order: mapOrderRow(order),
+      trackingNumber: order.tracking_number ?? undefined,
+      trackingCarrier: order.tracking_carrier ?? undefined,
     });
 
     await pool.query(
@@ -1440,6 +1534,8 @@ function mapOrderRow(row: any) {
     paymentProvider: row.payment_provider ?? "bank_transfer",
     paymentReference: row.payment_reference ?? row.reference,
     paidAt: row.paid_at ?? null,
+    trackingNumber: row.tracking_number ?? "",
+    trackingCarrier: row.tracking_carrier ?? "",
     internalNotes: row.internal_notes ?? "",
     createdAt: row.created_at,
     updatedAt: row.updated_at,

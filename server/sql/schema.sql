@@ -93,6 +93,8 @@ CREATE TABLE public.orders (
     payment_status text DEFAULT 'pending'::text NOT NULL,
     payment_provider text DEFAULT 'bank_transfer'::text NOT NULL,
     payment_reference text,
+    tracking_number text,
+    tracking_carrier text,
     paid_at timestamp with time zone,
     confirmation_token_hash text,
     internal_notes text,

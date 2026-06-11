@@ -43,6 +43,8 @@ export interface ApiOrder {
   paymentProvider: string;
   paymentReference: string;
   paidAt: string | null;
+  trackingNumber: string;
+  trackingCarrier: string;
   internalNotes: string;
   createdAt: string;
   updatedAt: string;
@@ -232,9 +234,32 @@ export async function getAdminOrder(reference: string): Promise<ApiOrder> {
   return data.order;
 }
 
+export async function updateAdminOrderPaymentStatus(
+  reference: string,
+  paymentStatus: "pending" | "paid" | "cancelled" | "refunded"
+): Promise<ApiOrder> {
+  const response = await fetch(`/api/admin/orders/${encodeURIComponent(reference)}/payment-status`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify({ paymentStatus }),
+  });
+
+  const data = await response.json().catch(() => null) as ApiOrderResponse | null;
+
+  if (!response.ok || !data?.ok || !data.order) {
+    throw new Error(data?.error || "Could not update payment status");
+  }
+
+  return data.order;
+}
+
 export async function updateAdminOrderStatus(
   reference: string,
-  status: OrderStatus
+  status: OrderStatus,
+  payload: { trackingNumber?: string; trackingCarrier?: string } = {}
 ): Promise<ApiOrder> {
   const response = await fetch(`/api/admin/orders/${encodeURIComponent(reference)}/status`, {
     method: "PATCH",
@@ -242,7 +267,7 @@ export async function updateAdminOrderStatus(
       "Content-Type": "application/json",
     },
     credentials: "include",
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, ...payload }),
   });
 
   const data = await response.json().catch(() => null) as ApiOrderResponse | null;
