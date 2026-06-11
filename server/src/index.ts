@@ -61,6 +61,9 @@ const publicOrderLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const ADMIN_SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
+const ADMIN_COOKIE_MAX_AGE_MS = ADMIN_SESSION_MAX_AGE_SECONDS * 1000;
+
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
@@ -729,15 +732,15 @@ app.post("/api/admin/login", loginLimiter, async (req: Request, res: Response) =
       role: admin.role,
     },
     config.jwtSecret,
-    { expiresIn: "7d" }
+    { expiresIn: ADMIN_SESSION_MAX_AGE_SECONDS }
   );
 
   res.cookie("elamora_admin_token", token, {
     httpOnly: true,
     secure: config.cookieSecure,
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: ADMIN_COOKIE_MAX_AGE_MS,
   });
 
   return res.json({
@@ -761,7 +764,7 @@ app.post("/api/admin/logout", (_req: Request, res: Response) => {
   res.clearCookie("elamora_admin_token", {
     httpOnly: true,
     secure: config.cookieSecure,
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
   });
 
