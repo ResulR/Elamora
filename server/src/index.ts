@@ -97,6 +97,7 @@ const createOrderSchema = z.object({
   }),
   customName: z.string().trim().max(120).optional().default(""),
   customMessage: z.string().trim().max(1000).optional().default(""),
+  termsAccepted: z.literal(true),
   items: z
     .array(
       z.object({
@@ -535,9 +536,10 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
           shipping_cents,
           tax_cents,
           total_cents,
-          confirmation_token_hash
+          confirmation_token_hash,
+          cgv_accepted_at
         )
-        VALUES ($1, 'pending_bank_transfer', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NULLIF($13, '')::date, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+        VALUES ($1, 'pending_bank_transfer', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NULLIF($13, '')::date, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, now())
         RETURNING *
       `,
       [

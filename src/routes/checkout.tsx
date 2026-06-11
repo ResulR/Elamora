@@ -43,6 +43,7 @@ function CheckoutPage() {
   const [cartItems, setCartItems]       = useState<CartItem[]>([]);
   const [shipping, setShipping]         = useState<ShippingFormState>(initialShipping);
   const [shippingQuote, setShippingQuote] = useState<ShippingQuote | null>(null);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError]   = useState<string | null>(null);
   const [catalog, setCatalog]           = useState<CatalogData>(() => emptyCatalog);
@@ -100,6 +101,11 @@ function CheckoutPage() {
       return;
     }
 
+    if (!termsAccepted) {
+      setSubmitError("Please accept the Terms of Sale before placing your order.");
+      return;
+    }
+
     const form = new FormData(event.currentTarget);
     setIsSubmitting(true);
     setSubmitError(null);
@@ -143,6 +149,7 @@ function CheckoutPage() {
         },
         customName,
         customMessage,
+        termsAccepted: true,
         items: orderItems,
       });
 
@@ -277,9 +284,33 @@ function CheckoutPage() {
                 </p>
               )}
 
+              <label className="mt-5 flex items-start gap-3 rounded-2xl border border-border/70 bg-background/60 px-4 py-3 text-xs leading-6 text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(event) => {
+                    setTermsAccepted(event.target.checked);
+                    setSubmitError(null);
+                  }}
+                  className="mt-1 h-4 w-4 rounded border-input accent-primary"
+                />
+                <span>
+                  I have read and accept the{" "}
+                  <Link
+                    to="/legal/cgv"
+                    target="_blank"
+                    className="font-medium text-foreground underline underline-offset-4 hover:text-primary"
+                  >
+                    Terms of Sale
+                  </Link>
+                  , including the rules for personalized products, cancellation, delivery
+                  and returns.
+                </span>
+              </label>
+
               <button
                 type="submit"
-                disabled={isSubmitting || !hasValidItem || !isDeliveryReady}
+                disabled={isSubmitting || !hasValidItem || !isDeliveryReady || !termsAccepted}
                 className="mt-5 w-full px-4 py-3 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity shadow-soft disabled:opacity-60"
               >
                 {isSubmitting ? "Saving order..." : "Confirm order and view bank transfer details ✦"}

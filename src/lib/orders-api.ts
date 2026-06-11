@@ -72,6 +72,7 @@ export interface CreateOrderPayload {
   };
   customName: string;
   customMessage: string;
+  termsAccepted: boolean;
   items: Array<{
     productId: string;
     quantity: number;
