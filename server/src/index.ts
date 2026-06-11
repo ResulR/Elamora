@@ -13,6 +13,7 @@ import { z } from "zod";
 import { config } from "./config.js";
 import { checkDatabase, pool } from "./db.js";
 import { sendAdminNewOrderEmail, sendOrderPaidEmail, sendOrderStatusNotificationEmail } from "./email.js";
+import { logAdminAction } from "./admin-audit.js";
 import { requireAdmin, type AdminRequest } from "./middleware/require-admin.js";
 
 const app = express();
@@ -890,9 +891,20 @@ app.post("/api/admin/products", requireAdmin, async (req: AdminRequest, res: Res
     [result.rows[0].id]
   );
 
+  const product = mapProductRow(productResult.rows[0]);
+
+  await logAdminAction(req, {
+    action: "product.create",
+    targetType: "product",
+    targetId: product.id,
+    payload: {
+      product,
+    },
+  });
+
   return res.status(201).json({
     ok: true,
-    product: mapProductRow(productResult.rows[0]),
+    product,
   });
 });
 
@@ -978,9 +990,21 @@ app.patch("/api/admin/products/:id", requireAdmin, async (req: AdminRequest, res
     [req.params.id]
   );
 
+  const product = mapProductRow(productResult.rows[0]);
+
+  await logAdminAction(req, {
+    action: "product.update",
+    targetType: "product",
+    targetId: product.id,
+    payload: {
+      changes: parsed.data,
+      product,
+    },
+  });
+
   return res.json({
     ok: true,
-    product: mapProductRow(productResult.rows[0]),
+    product,
   });
 });
 
@@ -1008,6 +1032,15 @@ app.patch(
     if (!result.rows[0]) {
       return res.status(404).json({ ok: false, error: "Product not found" });
     }
+
+    await logAdminAction(req, {
+      action: "product.set_active",
+      targetType: "product",
+      targetId: String(req.params.id),
+      payload: {
+        isActive: parsed.data.isActive,
+      },
+    });
 
     return res.json({ ok: true });
   }
@@ -1071,6 +1104,18 @@ app.post(
     if (!updatedResult.rows[0]) {
       return res.status(404).json({ ok: false, error: "Product not found" });
     }
+
+    await logAdminAction(req, {
+      action: "product.upload_image",
+      targetType: "product",
+      targetId: String(req.params.id),
+      payload: {
+        imageUrl,
+        originalFilename: req.file.originalname,
+        mimeType: req.file.mimetype,
+        sizeBytes: req.file.size,
+      },
+    });
 
     return res.json({
       ok: true,
@@ -1513,9 +1558,24 @@ app.patch(
       [parsed.data.paymentStatus, req.params.reference]
     );
 
+    const order = mapOrderRow(result.rows[0]);
+
+    await logAdminAction(req, {
+      action: "order.payment_status.update",
+      targetType: "order",
+      targetId: order.reference,
+      payload: {
+        previousStatus: existingOrder.status,
+        previousPaymentStatus: existingOrder.payment_status,
+        nextPaymentStatus: parsed.data.paymentStatus,
+        orderStatus: order.status,
+        paymentStatus: order.paymentStatus,
+      },
+    });
+
     return res.json({
       ok: true,
-      order: mapOrderRow(result.rows[0]),
+      order,
     });
   }
 );
@@ -1593,6 +1653,18 @@ app.patch(
     ) {
       void sendOrderStatusNotificationEmailForOrder(order.id, parsed.data.status);
     }
+
+    await logAdminAction(req, {
+      action: "order.status.update",
+      targetType: "order",
+      targetId: order.reference,
+      payload: {
+        previousStatus,
+        nextStatus: parsed.data.status,
+        trackingCarrier: parsed.data.trackingCarrier ?? "",
+        trackingNumber: parsed.data.trackingNumber ?? "",
+      },
+    });
 
     return res.json({
       ok: true,
