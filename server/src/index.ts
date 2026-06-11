@@ -9,7 +9,7 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { config } from "./config.js";
 import { checkDatabase, pool } from "./db.js";
-import { sendAdminNewOrderEmail, sendOrderPaidEmail } from "./email.js";
+import { sendAdminNewOrderEmail, sendOrderPaidEmail, sendOrderStatusNotificationEmail } from "./email.js";
 import { requireAdmin, type AdminRequest } from "./middleware/require-admin.js";
 
 const app = express();
@@ -838,7 +838,7 @@ app.patch(
 
     const currentResult = await pool.query(
       `
-        SELECT id
+        SELECT id, status
         FROM orders
         WHERE reference = $1
         LIMIT 1
@@ -874,8 +874,17 @@ app.patch(
 
     const order = result.rows[0];
 
-    if (parsed.data.status === "confirmed") {
+    const previousStatus = currentResult.rows[0].status;
+
+    if (parsed.data.status === "confirmed" && previousStatus !== "confirmed") {
       void sendPaymentConfirmedEmailForOrder(order.id);
+    }
+
+    if (
+      (parsed.data.status === "ready_for_pickup" || parsed.data.status === "shipped") &&
+      previousStatus !== parsed.data.status
+    ) {
+      void sendOrderStatusNotificationEmailForOrder(order.id, parsed.data.status);
     }
 
     return res.json({
@@ -972,6 +981,89 @@ async function sendAdminNewOrderEmailForOrder(orderId: string) {
     console.error("admin_new_order_email_failed", {
       orderId,
       notificationId: notification.id,
+      error: message,
+    });
+
+    await pool.query(
+      `
+        UPDATE order_notifications
+        SET status = 'failed',
+            error_message = $2
+        WHERE id = $1
+      `,
+      [notification.id, message.slice(0, 1000)]
+    );
+  }
+}
+
+
+async function sendOrderStatusNotificationEmailForOrder(
+  orderId: string,
+  status: "ready_for_pickup" | "shipped"
+) {
+  const notificationType = status === "ready_for_pickup"
+    ? "order_ready_for_pickup"
+    : "order_shipped";
+
+  const notificationResult = await pool.query(
+    `
+      INSERT INTO order_notifications (order_id, notification_type, recipient_email, status, provider)
+      SELECT id, $2, customer_email, 'pending', 'resend'
+      FROM orders
+      WHERE id = $1
+      ON CONFLICT (order_id, notification_type) DO NOTHING
+      RETURNING id
+    `,
+    [orderId, notificationType]
+  );
+
+  const notification = notificationResult.rows[0];
+
+  if (!notification) {
+    return;
+  }
+
+  try {
+    const orderResult = await pool.query(
+      `
+        SELECT *
+        FROM orders
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [orderId]
+    );
+
+    const order = orderResult.rows[0];
+
+    if (!order) {
+      throw new Error("order_not_found_for_status_notification_email");
+    }
+
+    const result = await sendOrderStatusNotificationEmail({
+      to: order.customer_email,
+      status,
+      order: mapOrderRow(order),
+    });
+
+    await pool.query(
+      `
+        UPDATE order_notifications
+        SET status = 'sent',
+            provider_message_id = $2,
+            error_message = NULL,
+            sent_at = now()
+        WHERE id = $1
+      `,
+      [notification.id, result.providerMessageId]
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown_email_error";
+
+    console.error("order_status_notification_email_failed", {
+      orderId,
+      notificationId: notification.id,
+      notificationType,
       error: message,
     });
 

@@ -398,3 +398,170 @@ export async function sendAdminNewOrderEmail(input: AdminNewOrderEmailInput) {
     text: email.text,
   });
 }
+
+
+export type OrderStatusNotificationEmailInput = {
+  to: string;
+  status: "ready_for_pickup" | "shipped";
+  order: {
+    reference: string;
+    totalCents: number;
+    customer: {
+      firstName: string;
+      lastName?: string;
+      deliveryMethod?: string;
+      deliveryDate?: string;
+      deliveryTimeSlot?: string;
+      address?: string;
+      addressLine1?: string;
+      addressLine2?: string;
+      postalCode?: string;
+      city?: string;
+      country?: string;
+    };
+  };
+  trackingUrl?: string;
+  trackingNumber?: string;
+};
+
+export function buildOrderStatusNotificationEmail(input: OrderStatusNotificationEmailInput) {
+  const order = input.order;
+  const customerName = [order.customer.firstName, order.customer.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  const isReadyForPickup = input.status === "ready_for_pickup";
+
+  const title = isReadyForPickup
+    ? "Your Elamora order is ready for pickup"
+    : "Your Elamora order has been shipped";
+
+  const intro = isReadyForPickup
+    ? "Good news. Your personalized gift is ready for pickup."
+    : "Good news. Your personalized gift has been shipped.";
+
+  const nextStep = isReadyForPickup
+    ? "You can now pick up your order. Please bring your order reference with you."
+    : "Your order is on its way. We will contact you if any delivery detail needs confirmation.";
+
+  const deliveryAddress = [
+    order.customer.address || order.customer.addressLine1,
+    order.customer.addressLine2,
+    [order.customer.postalCode, order.customer.city].filter(Boolean).join(" "),
+    order.customer.country,
+  ]
+    .filter(Boolean)
+    .join("<br>");
+
+  const trackingHtml = !isReadyForPickup && (input.trackingUrl || input.trackingNumber)
+    ? `
+      <h2 style="font-size:18px;margin:28px 0 8px;">Tracking</h2>
+      <p style="margin:0;font-size:15px;line-height:1.6;">
+        ${input.trackingNumber ? `Tracking number: ${escapeHtml(input.trackingNumber)}<br>` : ""}
+        ${input.trackingUrl ? `<a href="${escapeHtml(input.trackingUrl)}">Track your order</a>` : ""}
+      </p>
+    `
+    : "";
+
+  const trackingText = !isReadyForPickup && (input.trackingUrl || input.trackingNumber)
+    ? [
+        "",
+        "Tracking:",
+        input.trackingNumber ? `Tracking number: ${input.trackingNumber}` : "",
+        input.trackingUrl ? `Tracking link: ${input.trackingUrl}` : "",
+      ].filter(Boolean)
+    : [];
+
+  const html = `
+    <!doctype html>
+    <html>
+      <body style="margin:0;padding:0;background:#f8f3f6;font-family:Arial,Helvetica,sans-serif;color:#2b1f27;">
+        <div style="max-width:640px;margin:0 auto;padding:32px 16px;">
+          <div style="background:#ffffff;border-radius:20px;padding:28px;border:1px solid #eadde5;">
+            <h1 style="margin:0 0 12px;font-size:26px;line-height:1.2;color:#7f4f73;">
+              ${escapeHtml(title)}
+            </h1>
+
+            <p style="margin:0 0 18px;font-size:16px;line-height:1.6;">
+              Hi ${escapeHtml(customerName || order.customer.firstName)},<br>
+              ${escapeHtml(intro)}
+            </p>
+
+            <div style="background:#f8f3f6;border-radius:14px;padding:16px;margin:20px 0;">
+              <p style="margin:0;font-size:14px;color:#7f4f73;">Order reference</p>
+              <p style="margin:4px 0 0;font-size:22px;font-weight:700;">${escapeHtml(order.reference)}</p>
+            </div>
+
+            <p style="margin:0;font-size:15px;line-height:1.6;">
+              ${escapeHtml(nextStep)}
+            </p>
+
+            ${
+              isReadyForPickup
+                ? `
+                  <h2 style="font-size:18px;margin:28px 0 8px;">Pickup details</h2>
+                  <p style="margin:0;font-size:15px;line-height:1.6;">
+                    Date: ${escapeHtml(order.customer.deliveryDate || "To be confirmed")}<br>
+                    Time slot: ${escapeHtml(order.customer.deliveryTimeSlot || "To be confirmed")}
+                    ${deliveryAddress ? `<br><br>${deliveryAddress}` : ""}
+                  </p>
+                `
+                : `
+                  <h2 style="font-size:18px;margin:28px 0 8px;">Delivery details</h2>
+                  <p style="margin:0;font-size:15px;line-height:1.6;">
+                    ${deliveryAddress ? escapeHtml(deliveryAddress).replaceAll("&lt;br&gt;", "<br>") : "Delivery address to be confirmed"}
+                  </p>
+                `
+            }
+
+            ${trackingHtml}
+
+            <p style="margin:28px 0 0;font-size:14px;line-height:1.6;color:#6f626a;">
+              If you have any question, simply reply to this email.
+            </p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const text = [
+    title,
+    "",
+    `Hi ${customerName || order.customer.firstName},`,
+    intro,
+    "",
+    `Order reference: ${order.reference}`,
+    "",
+    nextStep,
+    "",
+    isReadyForPickup ? "Pickup details:" : "Delivery details:",
+    isReadyForPickup
+      ? `Date: ${order.customer.deliveryDate || "To be confirmed"}`
+      : `Address: ${deliveryAddress.replaceAll("<br>", ", ") || "Delivery address to be confirmed"}`,
+    isReadyForPickup ? `Time slot: ${order.customer.deliveryTimeSlot || "To be confirmed"}` : "",
+    ...trackingText,
+    "",
+    "If you have any question, simply reply to this email.",
+  ].filter((line) => line !== "").join("\n");
+
+  return {
+    subject: isReadyForPickup
+      ? `Your Elamora order ${order.reference} is ready for pickup`
+      : `Your Elamora order ${order.reference} has been shipped`,
+    html,
+    text,
+  };
+}
+
+export async function sendOrderStatusNotificationEmail(input: OrderStatusNotificationEmailInput) {
+  const email = buildOrderStatusNotificationEmail(input);
+
+  return sendEmail({
+    to: input.to,
+    subject: email.subject,
+    html: email.html,
+    text: email.text,
+  });
+}
