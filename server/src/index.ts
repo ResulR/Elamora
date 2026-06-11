@@ -39,7 +39,13 @@ app.set("trust proxy", 1);
 app.use(helmet());
 app.use(
   cors({
-    origin: config.corsOrigin,
+    origin(origin, callback) {
+      if (!origin || origin === config.corsOrigin) {
+        return callback(null, true);
+      }
+
+      return callback(null, false);
+    },
     credentials: true,
   })
 );
