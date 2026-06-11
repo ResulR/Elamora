@@ -15,6 +15,7 @@ export type CartItem = {
   bucketId: string | null;
   firstName: string;
   message: string;
+  ribbonColor: string;
   customRequests: string;
 };
 
@@ -56,6 +57,7 @@ function normalizeCartItem(value: unknown): CartItem | null {
     bucketId,
     firstName: asString(item.firstName),
     message: asString(item.message),
+    ribbonColor: asString(item.ribbonColor),
     customRequests: asString(item.customRequests),
   };
 }
@@ -152,6 +154,7 @@ export function buildCartCustomMessage(items: CartItem[]): string {
     const item = items[0];
     const parts: string[] = [];
     if (item.message)       parts.push(`Message: ${item.message}`);
+    if (item.ribbonColor)   parts.push(`Ribbon color: ${item.ribbonColor}`);
     if (item.customRequests) parts.push(`Special request: ${item.customRequests}`);
     return parts.join("\n");
   }
@@ -161,6 +164,7 @@ export function buildCartCustomMessage(items: CartItem[]): string {
       const lines: string[] = [`${i + 1}. ${item.creationName}`];
       if (item.firstName)     lines.push(`   Name: ${item.firstName}`);
       if (item.message)       lines.push(`   Message: ${item.message}`);
+      if (item.ribbonColor)   lines.push(`   Ribbon color: ${item.ribbonColor}`);
       if (item.customRequests) lines.push(`   Special request: ${item.customRequests}`);
       return lines.join("\n");
     })

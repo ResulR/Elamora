@@ -162,9 +162,10 @@ export function GlobalCartDrawer() {
                         </div>
                         <div className="mt-1.5 space-y-0.5 text-xs text-muted-foreground">
                           {item.firstName && <p><span className="opacity-60">Name:</span> {item.firstName}</p>}
+                          {item.ribbonColor && <p><span className="opacity-60">Ribbon:</span> {item.ribbonColor}</p>}
                           {item.message   && <p className="line-clamp-2 italic">{item.message}</p>}
                           {item.customRequests && <p className="line-clamp-1 italic opacity-80">{item.customRequests}</p>}
-                          {!item.firstName && !item.message && !item.customRequests && (
+                          {!item.firstName && !item.ribbonColor && !item.message && !item.customRequests && (
                             <p className="italic opacity-50">No personalization</p>
                           )}
                         </div>

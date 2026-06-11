@@ -1,4 +1,5 @@
 import { useConfigurator } from "@/lib/configurator-context";
+import { RibbonPicker } from "./RibbonPicker";
 
 export function PersonalizationFields() {
   const { config, setFirstName, setMessage, setCustomRequests } = useConfigurator();
@@ -23,6 +24,8 @@ export function PersonalizationFields() {
           Add the name to include on the gift.
         </span>
       </label>
+
+      <RibbonPicker />
 
       <label className="block">
         <span className="text-[10px] uppercase tracking-[0.25em] font-semibold text-foreground/70 block mb-2.5">

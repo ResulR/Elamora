@@ -139,6 +139,9 @@ export function CartDrawer() {
                           {item.firstName && (
                             <p><span className="text-foreground/50">Name:</span> {item.firstName}</p>
                           )}
+                          {item.ribbonColor && (
+                            <p><span className="text-foreground/50">Ribbon:</span> {item.ribbonColor}</p>
+                          )}
                           {item.message && (
                             <p className="line-clamp-2">
                               <span className="text-foreground/50">Message:</span>{" "}
@@ -151,7 +154,7 @@ export function CartDrawer() {
                               <em>{item.customRequests}</em>
                             </p>
                           )}
-                          {!item.firstName && !item.message && !item.customRequests && (
+                          {!item.firstName && !item.ribbonColor && !item.message && !item.customRequests && (
                             <p className="italic opacity-60">No personalization</p>
                           )}
                         </div>

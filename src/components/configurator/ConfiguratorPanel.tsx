@@ -4,6 +4,7 @@ import { CreationSelector } from "./CreationSelector";
 import { CustomRequestForm } from "./CustomRequestForm";
 import { PersonalizationFields } from "./PersonalizationFields";
 import { OrderSummary } from "./OrderSummary";
+import { LiveCreationPreview } from "./LiveCreationPreview";
 
 function scrollToConfigureTop() {
   setTimeout(() => {
@@ -21,6 +22,7 @@ export function ConfiguratorPanel() {
     mobileStep,
     setMobileStep,
     selectedDesign,
+    config,
   } = useConfigurator();
 
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -91,14 +93,11 @@ export function ConfiguratorPanel() {
         <section id="configure-panel" className="max-w-6xl mx-auto px-6 md:px-12 pt-10 pb-36 md:pb-24">
           <div className="grid lg:grid-cols-[1.05fr_1fr] gap-10 lg:gap-16">
             <div className="lg:sticky lg:top-28 lg:self-start">
-              <div className="aspect-[4/5] bg-primary-soft/35 rounded-[32px] overflow-hidden">
-                <img
-                  src={selectedDesign.imageUrl}
-                  alt={selectedDesign.name}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              </div>
+              <LiveCreationPreview
+                design={selectedDesign}
+                firstName={config.firstName}
+                message={config.message}
+              />
             </div>
 
             <div>

@@ -28,6 +28,7 @@ const defaultConfig: BucketConfiguration = {
   colorId:        null,
   firstName:      "",
   message:        "",
+  ribbonColor:    "Blush",
   customRequests: "",
 };
 
@@ -65,6 +66,7 @@ interface ConfiguratorContextValue {
   setBucket:         (id: string | null) => void;
   setFirstName:      (v: string) => void;
   setMessage:        (v: string) => void;
+  setRibbonColor:    (v: string) => void;
   setCustomRequests: (v: string) => void;
   // Legacy
   toggleFlower:  (id: string) => void;
@@ -212,6 +214,7 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
     setBucket: (id) => setConfig((c) => ({ ...c, bucketId: id })),
     setFirstName:      (v) => setConfig((c) => ({ ...c, firstName: v })),
     setMessage:        (v) => setConfig((c) => ({ ...c, message: v })),
+    setRibbonColor:    (v) => setConfig((c) => ({ ...c, ribbonColor: v })),
     setCustomRequests: (v) => setConfig((c) => ({ ...c, customRequests: v })),
 
     toggleFlower: (id) => setConfig((c) => ({

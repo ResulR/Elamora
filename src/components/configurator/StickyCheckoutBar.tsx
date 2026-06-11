@@ -39,7 +39,7 @@ export function StickyCheckoutBar() {
     mobileStep, setMobileStep,
     cartCount, cartTotalCents,
     selectedDesign, config,
-    addToCart, setDesign, setFirstName, setMessage, setCustomRequests,
+    addToCart, setDesign, setFirstName, setMessage, setRibbonColor, setCustomRequests,
   } = useConfigurator();
 
   const hasCreation = !!selectedDesign;
@@ -97,11 +97,13 @@ export function StickyCheckoutBar() {
         bucketId:       config.bucketId,
         firstName:      config.firstName,
         message:        config.message,
+        ribbonColor:    config.ribbonColor,
         customRequests: config.customRequests,
       });
       setDesign(null);
       setFirstName("");
       setMessage("");
+      setRibbonColor("Blush");
       setCustomRequests("");
       setMobileStep("creation");
       scrollToConfigureTop();
@@ -112,9 +114,11 @@ export function StickyCheckoutBar() {
         <CartBadge />
         {cartCount === 0 && (
           <div>
-            <p className="text-xs text-muted-foreground">Item</p>
-            <p className="font-display text-sm leading-none truncate max-w-[120px]">
-              {selectedDesign?.name ?? "—"}
+            <p className="text-xs text-muted-foreground">
+              {config.firstName ? `For ${config.firstName}` : "Item"}
+            </p>
+            <p className="font-display text-sm leading-none truncate max-w-[130px]">
+              {config.ribbonColor ? `${config.ribbonColor} ribbon` : selectedDesign?.name ?? "—"}
             </p>
           </div>
         )}

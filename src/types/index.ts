@@ -24,6 +24,7 @@ export interface BucketConfiguration {
   colorId: string | null;
   firstName: string;
   message: string;
+  ribbonColor: string;
   customRequests: string;
 }
 

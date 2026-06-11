@@ -62,6 +62,7 @@ function CheckoutPage() {
           bucketId:       legacy.bucketId,
           firstName:      legacy.firstName,
           message:        legacy.message,
+          ribbonColor:    legacy.ribbonColor,
           customRequests: legacy.customRequests,
         }];
       }
@@ -249,6 +250,7 @@ function CheckoutPage() {
                       </div>
                       <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
                         {item.firstName      && <p>Name: {item.firstName}</p>}
+                        {item.ribbonColor    && <p>Ribbon: {item.ribbonColor}</p>}
                         {item.message        && <p className="line-clamp-1 italic">{item.message}</p>}
                         {item.customRequests && <p className="line-clamp-1 italic">{item.customRequests}</p>}
                       </div>

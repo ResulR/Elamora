@@ -21,6 +21,7 @@ export function OrderSummary() {
     setDesign,
     setFirstName,
     setMessage,
+    setRibbonColor,
     setCustomRequests,
     setMobileStep,
   } = useConfigurator();
@@ -37,12 +38,14 @@ export function OrderSummary() {
       bucketId: config.bucketId,
       firstName: config.firstName,
       message: config.message,
+      ribbonColor: config.ribbonColor,
       customRequests: config.customRequests,
     });
 
     setDesign(null);
     setFirstName("");
     setMessage("");
+    setRibbonColor("Blush");
     setCustomRequests("");
     setMobileStep("creation");
     scrollToConfigureTop();
@@ -54,6 +57,7 @@ export function OrderSummary() {
 
   const details = [
     config.firstName ? `For "${config.firstName}"` : null,
+    config.ribbonColor ? `${config.ribbonColor} ribbon` : null,
     config.message ? `message included` : null,
     config.customRequests ? `special request included` : null,
   ].filter(Boolean);
