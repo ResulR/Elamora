@@ -1,14 +1,16 @@
 import { useConfigurator } from "@/lib/configurator-context";
 import { formatPrice } from "@/lib/format";
 import { getProductImageUrl } from "@/lib/product-images";
+import { ProductCardSkeletonGrid } from "./CatalogSkeletons";
 
 export function FlowerSelector() {
   const { config, toggleFlower, catalog, catalogLoading } = useConfigurator();
+  if (catalogLoading) {
+    return <ProductCardSkeletonGrid count={3} columnsClassName="grid grid-cols-3 gap-2" />;
+  }
+
   return (
     <div className="grid grid-cols-3 gap-2">
-      {catalogLoading && (
-        <p className="col-span-3 text-xs text-muted-foreground">Loading live catalog...</p>
-      )}
       {catalog.flowers.map((f) => {
         const active = config.flowerIds.includes(f.id);
         const count  = config.flowerIds.filter((id) => id === f.id).length;

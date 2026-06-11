@@ -10,6 +10,7 @@ import {
 
 import appCss from "../styles.css?url";
 import { IntroEnvelope } from "@/components/intro/IntroEnvelope";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -119,6 +120,7 @@ function RootComponent() {
       <IntroEnvelope>
         <Outlet />
       </IntroEnvelope>
+      <Toaster />
     </QueryClientProvider>
   );
 }

@@ -1,14 +1,16 @@
 import { useConfigurator } from "@/lib/configurator-context";
 import { formatPrice } from "@/lib/format";
 import { getProductImageUrl } from "@/lib/product-images";
+import { ProductCardSkeletonGrid } from "./CatalogSkeletons";
 
 export function BalloonSelector() {
   const { config, toggleBalloon, catalog, catalogLoading } = useConfigurator();
+  if (catalogLoading) {
+    return <ProductCardSkeletonGrid count={2} columnsClassName="grid grid-cols-2 gap-2" />;
+  }
+
   return (
     <div className="grid grid-cols-2 gap-2">
-      {catalogLoading && (
-        <p className="col-span-2 text-xs text-muted-foreground">Loading live catalog...</p>
-      )}
       {catalog.balloons.map((b) => {
         const active = config.balloonIds.includes(b.id);
         const imgUrl = getProductImageUrl(b);

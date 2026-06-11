@@ -3,6 +3,7 @@ import { useConfigurator } from "@/lib/configurator-context";
 import { DESIGN_PRESETS, type GiftDesign } from "@/lib/design-presets";
 import { formatPrice } from "@/lib/format";
 import { X, ZoomIn } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function Lightbox({
   design,
@@ -87,6 +88,7 @@ function Lightbox({
 export function CreationSelector() {
   const { setDesign, setMobileStep } = useConfigurator();
   const [lightbox, setLightbox] = useState<GiftDesign | null>(null);
+  const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
 
   const choose = (design: GiftDesign) => {
     setDesign(design.id);
@@ -108,12 +110,28 @@ export function CreationSelector() {
             onClick={() => choose(creation)}
             className="group text-left focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/15 rounded-[28px] cursor-pointer"
           >
-            <div className="relative aspect-[4/5] max-h-[520px] bg-primary-soft/35 rounded-[28px] overflow-hidden">
+            <div className="relative aspect-[4/5] max-h-[520px] bg-primary-soft/25 rounded-[28px] overflow-hidden">
+              {!loadedImages[creation.id] && (
+                <div className="absolute inset-0 z-0">
+                  <Skeleton className="h-full w-full rounded-[28px]" />
+                  <div className="absolute inset-x-8 bottom-8 space-y-3">
+                    <Skeleton className="h-3 w-2/3 rounded-full" />
+                    <Skeleton className="h-3 w-1/2 rounded-full" />
+                  </div>
+                </div>
+              )}
+
               <img
                 src={creation.imageUrl}
                 alt={creation.name}
                 loading="lazy"
-                className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+                onLoad={() =>
+                  setLoadedImages((current) => ({ ...current, [creation.id]: true }))
+                }
+                className={[
+                  "w-full h-full object-cover transition-all duration-700 ease-out group-hover:scale-[1.04]",
+                  loadedImages[creation.id] ? "opacity-100" : "opacity-0",
+                ].join(" ")}
               />
 
               <div className="absolute inset-0 rounded-[28px] ring-0 ring-primary/0 group-hover:ring-1 group-hover:ring-primary/30 transition-all duration-500" />

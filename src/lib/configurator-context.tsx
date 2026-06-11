@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import {
   createContext,
   useContext,
@@ -128,6 +129,7 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
         if (!cancelled) {
           setCatalog(emptyCatalog);
           setCatalogError("Could not load live catalog.");
+          toast.error("Could not load the live catalog. Please refresh or try again later.");
         }
       } finally {
         if (!cancelled) setCatalogLoading(false);

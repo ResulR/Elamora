@@ -23,6 +23,7 @@ export function ConfiguratorPanel() {
     setMobileStep,
     selectedDesign,
     config,
+    catalogError,
   } = useConfigurator();
 
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -143,6 +144,12 @@ export function ConfiguratorPanel() {
           className="max-w-2xl mx-auto mb-8 flex items-center justify-center px-5 py-4 rounded-2xl border border-primary/20 bg-primary-soft/30 text-sm font-semibold shadow-soft"
         >
           {successMsg}
+        </div>
+      )}
+
+      {catalogError && (
+        <div className="max-w-3xl mx-auto mb-8 rounded-2xl border border-destructive/25 bg-destructive/10 px-5 py-4 text-sm text-destructive">
+          Live catalog could not be loaded. You can still browse our creations, but some live options may be unavailable.
         </div>
       )}
 

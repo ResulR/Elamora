@@ -1,10 +1,14 @@
 import { useConfigurator } from "@/lib/configurator-context";
+import { ColorSkeletons } from "./CatalogSkeletons";
 
 export function ColorSelector() {
   const { config, setColor, catalog, catalogLoading } = useConfigurator();
+  if (catalogLoading) {
+    return <ColorSkeletons />;
+  }
+
   return (
     <div className="flex flex-wrap gap-3">
-      {catalogLoading && <p className="w-full text-xs text-muted-foreground">Loading live catalog...</p>}
       {catalog.colors.map((c) => {
         const active = config.colorId === c.id;
         return (

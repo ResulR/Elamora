@@ -1,14 +1,16 @@
 import { useConfigurator } from "@/lib/configurator-context";
 import { formatPrice } from "@/lib/format";
 import { getProductImageUrl } from "@/lib/product-images";
+import { ProductCardSkeletonGrid } from "./CatalogSkeletons";
 
 export function BucketSelector() {
   const { config, setBucket, catalog, catalogLoading } = useConfigurator();
+  if (catalogLoading) {
+    return <ProductCardSkeletonGrid count={2} columnsClassName="grid grid-cols-2 gap-3" />;
+  }
+
   return (
     <div className="grid grid-cols-2 gap-3">
-      {catalogLoading && (
-        <p className="col-span-2 text-xs text-muted-foreground">Loading live catalog...</p>
-      )}
       {catalog.buckets.map((b) => {
         const active  = config.bucketId === b.id;
         const imgUrl  = getProductImageUrl(b);
