@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { EmptyState } from "@/components/ui-kit/EmptyState";
 import {
   getAdminOrder,
   updateAdminOrderStatus,
   type ApiOrder,
+  type ApiOrderItem,
 } from "@/lib/orders-api";
 import { formatDate, formatPrice } from "@/lib/format";
 import { ArrowLeft, ShoppingBag } from "lucide-react";
@@ -88,18 +89,73 @@ function AdminOrderDetailPage() {
     <AdminLayout title={`Order #${order.reference}`}>
       <BackLink />
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        <Card title="Order overview">
-          <InfoRow label="Reference" value={order.reference} />
-          <InfoRow
-            label="Status"
-            value={
+      <div className="space-y-6">
+        <section className="bg-surface/80 border border-border/60 rounded-2xl p-4 md:p-6 shadow-soft">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-5">
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                Order reference
+              </p>
+              <h2 className="font-display text-3xl md:text-4xl mt-1">
+                {order.reference}
+              </h2>
+
+              <div className="flex flex-wrap gap-2 mt-4">
+                <StatusBadge status={order.status} />
+                <SimpleBadge value={formatPaymentStatus(order.paymentStatus)} />
+                <SimpleBadge value={order.customer.deliveryMethod} />
+              </div>
+            </div>
+
+            <div className="md:text-right">
+              <p className="text-sm text-muted-foreground">Total</p>
+              <p className="font-display text-3xl">{formatPrice(order.totalCents)}</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Created {formatDate(order.createdAt)}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <div className="grid xl:grid-cols-[1fr_0.9fr] gap-6">
+          <div className="space-y-6">
+            <Card title="Preparation items">
+              {(order.items ?? []).length === 0 ? (
+                <p className="text-sm text-muted-foreground">No items found for this order.</p>
+              ) : (
+                <div className="space-y-3">
+                  {(order.items ?? []).map((item) => (
+                    <OrderItemRow key={item.id} item={item} />
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            <Card title="Personalization">
+              <InfoRow label="Personalized name" value={order.customName || "-"} />
+              <InfoRow label="Message" value={order.customMessage || "-"} />
+              <InfoRow label="Internal notes" value={order.internalNotes || "-"} />
+            </Card>
+
+            <Card title="Delivery / pickup">
+              <InfoRow label="Method" value={formatDeliveryMethod(order.customer.deliveryMethod)} />
+              <InfoRow label="Date" value={formatOptionalDate(order.customer.deliveryDate)} />
+              <InfoRow label="Time slot" value={order.customer.deliveryTimeSlot || "-"} />
+              <InfoRow label="Recipient phone" value={order.customer.recipientPhone || order.customer.phone || "-"} />
+              <InfoRow label="Address" value={<AddressBlock order={order} />} />
+              <InfoRow label="Instructions" value={order.customer.deliveryInstructions || "-"} />
+            </Card>
+          </div>
+
+          <div className="space-y-6">
+            <Card title="Actions">
               <div className="space-y-2">
+                <label className="text-sm text-muted-foreground">Status</label>
                 <select
                   value={order.status}
                   disabled={isUpdatingStatus}
                   onChange={(event) => handleStatusChange(event.target.value as OrderStatus)}
-                  className="rounded-lg border border-input bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full rounded-xl border border-input bg-background px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   {statuses.map((status) => (
                     <option key={status} value={status}>
@@ -107,63 +163,44 @@ function AdminOrderDetailPage() {
                     </option>
                   ))}
                 </select>
+
                 {statusError ? (
                   <p className="text-xs text-destructive">{statusError}</p>
                 ) : null}
+
+                <p className="text-xs text-muted-foreground">
+                  Changing to confirmed marks the bank transfer as paid. Changing to ready for pickup or shipped sends a client notification.
+                </p>
               </div>
-            }
-          />
-          <InfoRow label="Date" value={formatDate(order.createdAt)} />
-          <InfoRow label="Total" value={formatPrice(order.totalCents)} />
-          <InfoRow label="Payment status" value={formatPaymentStatus(order.paymentStatus)} />
-          <InfoRow label="Payment provider" value={order.paymentProvider || "-"} />
-          <InfoRow label="Payment reference" value={order.paymentReference || order.reference} />
-          <InfoRow label="Paid at" value={order.paidAt ? formatDate(order.paidAt) : "-"} />
-        </Card>
+            </Card>
 
-        <Card title="Customer information">
-          <InfoRow
-            label="Customer"
-            value={`${order.customer.firstName} ${order.customer.lastName}`.trim() || "-"}
-          />
-          <InfoRow label="Email" value={order.customer.email || "-"} />
-          <InfoRow label="Phone" value={order.customer.phone || "-"} />
-          <InfoRow label="Address" value={order.customer.address || "-"} />
-          <InfoRow label="Delivery method" value={order.customer.deliveryMethod} />
-        </Card>
+            <Card title="Customer">
+              <InfoRow
+                label="Name"
+                value={`${order.customer.firstName} ${order.customer.lastName}`.trim() || "-"}
+              />
+              <InfoRow label="Email" value={order.customer.email || "-"} />
+              <InfoRow label="Phone" value={order.customer.phone || "-"} />
+            </Card>
 
-        <Card title="Bucket composition">
-          {(order.items ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">No items found for this order.</p>
-          ) : (
-            <div className="space-y-3">
-              {(order.items ?? []).map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-start justify-between gap-4 border border-border/60 rounded-xl px-4 py-3"
-                >
-                  <div>
-                    <p className="font-medium">{item.productName}</p>
-                    <p className="text-sm text-muted-foreground">Quantity: {item.quantity}</p>
-                    {item.colorName ? (
-                      <p className="text-xs text-muted-foreground">Color: {item.colorName}</p>
-                    ) : null}
-                  </div>
-                  <p className="text-sm font-medium">
-                    {formatPrice(item.unitPriceCents * item.quantity)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
+            <Card title="Payment">
+              <InfoRow label="Status" value={formatPaymentStatus(order.paymentStatus)} />
+              <InfoRow label="Provider" value={formatPaymentProvider(order.paymentProvider)} />
+              <InfoRow label="Reference" value={order.paymentReference || order.reference} />
+              <InfoRow label="Paid at" value={order.paidAt ? formatDate(order.paidAt) : "-"} />
+              <InfoRow label="Subtotal" value={formatPrice(order.subtotalCents)} />
+              <InfoRow label="Shipping" value={formatPrice(order.shippingCents)} />
+              <InfoRow label="Tax" value={formatPrice(order.taxCents)} />
+              <InfoRow label="Total" value={formatPrice(order.totalCents)} />
+            </Card>
 
-        <Card title="Name & message">
-          <InfoRow label="Personalized name" value={order.customName || "-"} />
-          <InfoRow label="Message" value={order.customMessage || "-"} />
-          <InfoRow label="Internal notes" value={order.internalNotes || "-"} />
-          <InfoRow label="Updated at" value={formatDate(order.updatedAt)} />
-        </Card>
+            <Card title="System">
+              <InfoRow label="Order ID" value={order.id} />
+              <InfoRow label="Created at" value={formatDate(order.createdAt)} />
+              <InfoRow label="Updated at" value={formatDate(order.updatedAt)} />
+            </Card>
+          </div>
+        </div>
       </div>
     </AdminLayout>
   );
@@ -182,8 +219,8 @@ function BackLink() {
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="bg-surface/80 border border-border/60 rounded-2xl p-5 shadow-soft">
-      <h2 className="font-display text-lg mb-3">{title}</h2>
+    <section className="bg-surface/80 border border-border/60 rounded-2xl p-4 md:p-5 shadow-soft">
+      <h2 className="font-display text-xl mb-4">{title}</h2>
       {children}
     </section>
   );
@@ -191,15 +228,102 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
 
 function InfoRow({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-border/50 py-2 last:border-b-0">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium text-right">{value}</span>
+    <div className="flex items-start justify-between gap-4 border-b border-border/50 py-3 last:border-b-0">
+      <span className="text-sm text-muted-foreground shrink-0">{label}</span>
+      <span className="text-sm font-medium text-right break-words min-w-0">{value}</span>
     </div>
+  );
+}
+
+function OrderItemRow({ item }: { item: ApiOrderItem }) {
+  const total = item.unitPriceCents * item.quantity;
+
+  return (
+    <div className="border border-border/60 rounded-2xl p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="font-semibold">{item.productName}</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Qty {item.quantity} × {formatPrice(item.unitPriceCents)}
+          </p>
+
+          {item.colorName ? (
+            <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+              {item.colorHex ? (
+                <span
+                  className="h-4 w-4 rounded-full border border-border shrink-0"
+                  style={{ background: item.colorHex }}
+                />
+              ) : null}
+              <span>{item.colorName}</span>
+            </div>
+          ) : null}
+        </div>
+
+        <p className="font-medium whitespace-nowrap">{formatPrice(total)}</p>
+      </div>
+    </div>
+  );
+}
+
+function AddressBlock({ order }: { order: ApiOrder }) {
+  const lines = [
+    order.customer.address || order.customer.addressLine1,
+    order.customer.addressLine2,
+    [order.customer.postalCode, order.customer.city].filter(Boolean).join(" "),
+    order.customer.country,
+  ].filter(Boolean);
+
+  const hasRealAddress = lines.some((line) => line !== order.customer.country);
+
+  if (lines.length === 0 || !hasRealAddress) {
+    return order.customer.deliveryMethod === "pickup"
+      ? "Pickup location to be confirmed"
+      : "-";
+  }
+
+  return (
+    <span className="block text-right">
+      {lines.map((line) => (
+        <span key={line} className="block">
+          {line}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function StatusBadge({ status }: { status: OrderStatus }) {
+  return (
+    <span className="inline-flex rounded-full border border-border px-2.5 py-1 text-xs capitalize">
+      {formatOrderStatus(status)}
+    </span>
+  );
+}
+
+function SimpleBadge({ value }: { value: string }) {
+  return (
+    <span className="inline-flex rounded-full border border-border px-2.5 py-1 text-xs capitalize">
+      {value.replaceAll("_", " ")}
+    </span>
   );
 }
 
 function formatPaymentStatus(status: string) {
   return status.replaceAll("_", " ");
+}
+
+function formatPaymentProvider(provider: string) {
+  if (!provider || provider === "bank_transfer") return "Bank transfer";
+  return provider.replaceAll("_", " ");
+}
+
+function formatDeliveryMethod(method: string) {
+  return method === "delivery" ? "Delivery" : "Pickup";
+}
+
+function formatOptionalDate(value?: string) {
+  return value ? formatDate(value) : "-";
 }
 
 function formatOrderStatus(status: OrderStatus) {
