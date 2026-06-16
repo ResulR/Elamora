@@ -91,9 +91,9 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "https://js.stripe.com"],
-        frameSrc: ["'self'", "https://js.stripe.com", "https://hooks.stripe.com"],
-        connectSrc: ["'self'", "https://api.stripe.com"],
+        scriptSrc: ["'self'"],
+        frameSrc: ["'self'"],
+        connectSrc: ["'self'"],
         imgSrc: ["'self'", "data:", "https:"],
       },
     },
