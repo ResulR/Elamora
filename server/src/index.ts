@@ -22,6 +22,7 @@ import {
 import { logAdminAction } from "./admin-audit.js";
 import { logger, logError } from "./logger.js";
 import { requireAdmin, type AdminRequest } from "./middleware/require-admin.js";
+import { requireSameOrigin } from "./middleware/require-same-origin.js";
 
 const app = express();
 
@@ -113,6 +114,7 @@ app.use(
 app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
 app.use("/api/uploads", express.static(uploadRootDir));
+app.use("/api/admin", requireSameOrigin);
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
