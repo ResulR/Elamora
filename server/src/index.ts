@@ -58,7 +58,7 @@ app.use(
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || origin === config.corsOrigin) {
+      if (!origin || config.corsOrigins.includes(origin.replace(/\/$/, ""))) {
         return callback(null, true);
       }
 

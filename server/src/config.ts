@@ -57,6 +57,11 @@ if (parsed.data.NODE_ENV === "production" && invalidBankTransferConfigEntries.le
   process.exit(1);
 }
 
+const corsOrigins = parsed.data.CORS_ORIGIN
+  .split(",")
+  .map((origin) => origin.trim().replace(/\/$/, ""))
+  .filter(Boolean);
+
 const invalidEmailConfigEntries = [
   ["RESEND_API_KEY", parsed.data.RESEND_API_KEY],
   ["EMAIL_FROM", parsed.data.EMAIL_FROM],
@@ -76,7 +81,8 @@ export const config = {
   port: parsed.data.PORT,
   databaseUrl: parsed.data.DATABASE_URL,
   jwtSecret: parsed.data.JWT_SECRET,
-  corsOrigin: parsed.data.CORS_ORIGIN,
+  corsOrigin: corsOrigins[0] ?? parsed.data.CORS_ORIGIN,
+  corsOrigins,
   cookieSecure: parsed.data.COOKIE_SECURE,
   bankTransfer: {
     configured: invalidBankTransferConfigEntries.length === 0,
