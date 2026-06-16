@@ -697,7 +697,7 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
 });
 
 
-app.get("/api/orders/confirmation/:reference", async (req: Request, res: Response) => {
+app.get("/api/orders/confirmation/:reference", publicOrderLimiter, async (req: Request, res: Response) => {
   const token = String(req.query.token ?? "").trim();
 
   if (!token) {
