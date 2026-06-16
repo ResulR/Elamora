@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import express, { type Request, type Response } from "express";
 import helmet from "helmet";
 import cors from "cors";
@@ -24,7 +25,49 @@ import { requireAdmin, type AdminRequest } from "./middleware/require-admin.js";
 
 const app = express();
 
-const productUploadDir = path.resolve(process.cwd(), "server/public/uploads/products");
+const serverRuntimeDir = path.dirname(fileURLToPath(import.meta.url));
+const serverRootDir = path.resolve(serverRuntimeDir, "..");
+const uploadRootDir = path.join(serverRootDir, "public/uploads");
+const productUploadDir = path.join(uploadRootDir, "products");
+
+type SupportedImageMimeType = "image/jpeg" | "image/png" | "image/webp";
+
+const extensionByMime: Record<SupportedImageMimeType, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
+
+function detectImageMimeType(buffer: Buffer): SupportedImageMimeType | null {
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return "image/jpeg";
+  }
+
+  if (
+    buffer.length >= 8 &&
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47 &&
+    buffer[4] === 0x0d &&
+    buffer[5] === 0x0a &&
+    buffer[6] === 0x1a &&
+    buffer[7] === 0x0a
+  ) {
+    return "image/png";
+  }
+
+  if (
+    buffer.length >= 12 &&
+    buffer.toString("ascii", 0, 4) === "RIFF" &&
+    buffer.toString("ascii", 8, 12) === "WEBP"
+  ) {
+    return "image/webp";
+  }
+
+  return null;
+}
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -69,7 +112,7 @@ app.use(
 );
 app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
-app.use("/api/uploads", express.static(path.resolve(process.cwd(), "server/public/uploads")));
+app.use("/api/uploads", express.static(uploadRootDir));
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -1099,20 +1142,15 @@ app.post(
       return res.status(404).json({ ok: false, error: "Product not found" });
     }
 
-    await fs.mkdir(productUploadDir, { recursive: true });
+    const detectedMimeType = detectImageMimeType(req.file.buffer);
 
-    const extensionByMime: Record<string, string> = {
-      "image/jpeg": "jpg",
-      "image/png": "png",
-      "image/webp": "webp",
-    };
-
-    const extension = extensionByMime[req.file.mimetype];
-
-    if (!extension) {
-      return res.status(400).json({ ok: false, error: "Unsupported image type" });
+    if (!detectedMimeType || detectedMimeType !== req.file.mimetype) {
+      return res.status(400).json({ ok: false, error: "Invalid image file" });
     }
 
+    await fs.mkdir(productUploadDir, { recursive: true });
+
+    const extension = extensionByMime[detectedMimeType];
     const filename = `${req.params.id}-${Date.now()}-${crypto.randomBytes(6).toString("hex")}.${extension}`;
     const filepath = path.join(productUploadDir, filename);
 
@@ -1142,7 +1180,7 @@ app.post(
       payload: {
         imageUrl,
         originalFilename: req.file.originalname,
-        mimeType: req.file.mimetype,
+        mimeType: detectedMimeType,
         sizeBytes: req.file.size,
       },
     });
