@@ -245,6 +245,223 @@ export async function sendOrderPaidEmail(input: OrderPaidEmailInput) {
 }
 
 
+export type OrderAcknowledgmentEmailInput = {
+  to: string;
+  confirmationUrl: string;
+  bankTransfer: {
+    beneficiary: string;
+    bankName: string;
+    iban: string;
+    currency: string;
+  };
+  order: {
+    reference: string;
+    totalCents: number;
+    subtotalCents?: number;
+    shippingCents?: number;
+    customName?: string;
+    customMessage?: string;
+    paymentReference?: string;
+    customer: {
+      firstName: string;
+      lastName?: string;
+      deliveryMethod?: string;
+      deliveryDate?: string;
+      deliveryTimeSlot?: string;
+      address?: string;
+      addressLine1?: string;
+      addressLine2?: string;
+      postalCode?: string;
+      city?: string;
+      country?: string;
+    };
+  };
+  items: OrderPaidEmailItem[];
+};
+
+export function buildOrderAcknowledgmentEmail(input: OrderAcknowledgmentEmailInput) {
+  const order = input.order;
+  const customerName = [order.customer.firstName, order.customer.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  const deliveryAddress = [
+    order.customer.address || order.customer.addressLine1,
+    order.customer.addressLine2,
+    [order.customer.postalCode, order.customer.city].filter(Boolean).join(" "),
+    order.customer.country,
+  ]
+    .filter(Boolean)
+    .join("<br>");
+
+  const itemsHtml = input.items
+    .map((item) => {
+      const color = item.colorName ? ` <span style="color:#777;">(${escapeHtml(item.colorName)})</span>` : "";
+      return `
+        <tr>
+          <td style="padding:10px 0;border-bottom:1px solid #eee;">
+            ${escapeHtml(item.productName)}${color}
+          </td>
+          <td style="padding:10px 0;border-bottom:1px solid #eee;text-align:center;">
+            ${escapeHtml(item.quantity)}
+          </td>
+          <td style="padding:10px 0;border-bottom:1px solid #eee;text-align:right;">
+            ${formatMoney(item.unitPriceCents * item.quantity)}
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  const deliveryMethod = order.customer.deliveryMethod === "delivery" ? "Delivery" : "Pickup";
+  const deliveryDate = order.customer.deliveryDate ? escapeHtml(order.customer.deliveryDate) : "To be confirmed";
+  const deliveryTimeSlot = order.customer.deliveryTimeSlot ? escapeHtml(order.customer.deliveryTimeSlot) : "To be confirmed";
+  const paymentReference = order.paymentReference || order.reference;
+
+  const html = `
+    <!doctype html>
+    <html>
+      <body style="margin:0;padding:0;background:#f8f3f6;font-family:Arial,Helvetica,sans-serif;color:#2b1f27;">
+        <div style="max-width:640px;margin:0 auto;padding:32px 16px;">
+          <div style="background:#ffffff;border-radius:20px;padding:28px;border:1px solid #eadde5;">
+            <h1 style="margin:0 0 12px;font-size:26px;line-height:1.2;color:#7f4f73;">
+              We have received your Elamora order
+            </h1>
+
+            <p style="margin:0 0 18px;font-size:16px;line-height:1.6;">
+              Hi ${escapeHtml(customerName || order.customer.firstName)},<br>
+              Thank you for your order. Please complete the bank transfer below so we can prepare your personalized gift.
+            </p>
+
+            <div style="background:#f8f3f6;border-radius:14px;padding:16px;margin:20px 0;">
+              <p style="margin:0;font-size:14px;color:#7f4f73;">Order reference</p>
+              <p style="margin:4px 0 0;font-size:22px;font-weight:700;">${escapeHtml(order.reference)}</p>
+            </div>
+
+            <h2 style="font-size:18px;margin:24px 0 8px;">Bank transfer instructions</h2>
+            <div style="background:#fff8fb;border:1px solid #eadde5;border-radius:16px;padding:16px;font-size:15px;line-height:1.7;">
+              <strong>Beneficiary:</strong> ${escapeHtml(input.bankTransfer.beneficiary)}<br>
+              <strong>Bank name:</strong> ${escapeHtml(input.bankTransfer.bankName)}<br>
+              <strong>IBAN:</strong> ${escapeHtml(input.bankTransfer.iban)}<br>
+              <strong>Currency:</strong> ${escapeHtml(input.bankTransfer.currency)}<br>
+              <strong>Amount:</strong> ${formatMoney(order.totalCents)}<br>
+              <strong>Payment reference:</strong> ${escapeHtml(paymentReference)}
+            </div>
+
+            <p style="margin:14px 0 0;font-size:14px;line-height:1.6;color:#6f626a;">
+              Please use the exact payment reference above. Your order will remain pending until the payment is received and approved by our team.
+            </p>
+
+            <p style="margin:22px 0;">
+              <a href="${escapeHtml(input.confirmationUrl)}" style="display:inline-block;padding:12px 18px;background:#7f4f73;color:#ffffff;text-decoration:none;border-radius:999px;">
+                View your order confirmation
+              </a>
+            </p>
+
+            <h2 style="font-size:18px;margin:24px 0 8px;">Order summary</h2>
+            <table style="width:100%;border-collapse:collapse;font-size:14px;">
+              <thead>
+                <tr>
+                  <th style="padding:8px 0;border-bottom:1px solid #ddd;text-align:left;">Item</th>
+                  <th style="padding:8px 0;border-bottom:1px solid #ddd;text-align:center;">Qty</th>
+                  <th style="padding:8px 0;border-bottom:1px solid #ddd;text-align:right;">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHtml}
+              </tbody>
+            </table>
+
+            <table style="width:100%;border-collapse:collapse;margin-top:16px;font-size:15px;">
+              <tr>
+                <td style="padding:4px 0;">Subtotal</td>
+                <td style="padding:4px 0;text-align:right;">${formatMoney(order.subtotalCents ?? order.totalCents)}</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 0;">Shipping</td>
+                <td style="padding:4px 0;text-align:right;">${formatMoney(order.shippingCents ?? 0)}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 0 0;font-weight:700;font-size:18px;">Total to pay</td>
+                <td style="padding:10px 0 0;text-align:right;font-weight:700;font-size:18px;">${formatMoney(order.totalCents)}</td>
+              </tr>
+            </table>
+
+            <h2 style="font-size:18px;margin:28px 0 8px;">${deliveryMethod} details</h2>
+            <p style="margin:0;font-size:15px;line-height:1.6;">
+              Date: ${deliveryDate}<br>
+              Time slot: ${deliveryTimeSlot}
+              ${deliveryAddress ? `<br><br>${deliveryAddress}` : ""}
+            </p>
+
+            ${
+              order.customName || order.customMessage
+                ? `
+                  <h2 style="font-size:18px;margin:28px 0 8px;">Personalization</h2>
+                  <p style="margin:0;font-size:15px;line-height:1.6;">
+                    ${order.customName ? `Name: ${escapeHtml(order.customName)}<br>` : ""}
+                    ${order.customMessage ? `Message: ${escapeHtml(order.customMessage)}` : ""}
+                  </p>
+                `
+                : ""
+            }
+
+            <p style="margin:28px 0 0;font-size:14px;line-height:1.6;color:#6f626a;">
+              If you have any question, simply reply to this email.
+            </p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const text = [
+    "We have received your Elamora order",
+    "",
+    `Hi ${customerName || order.customer.firstName},`,
+    "Thank you for your order. Please complete the bank transfer below so we can prepare your personalized gift.",
+    "",
+    `Order reference: ${order.reference}`,
+    "",
+    "Bank transfer instructions:",
+    `Beneficiary: ${input.bankTransfer.beneficiary}`,
+    `Bank name: ${input.bankTransfer.bankName}`,
+    `IBAN: ${input.bankTransfer.iban}`,
+    `Currency: ${input.bankTransfer.currency}`,
+    `Amount: ${formatMoney(order.totalCents)}`,
+    `Payment reference: ${paymentReference}`,
+    "",
+    `Confirmation link: ${input.confirmationUrl}`,
+    "",
+    "Order summary:",
+    ...input.items.map((item) => `- ${item.productName}${item.colorName ? ` (${item.colorName})` : ""} x${item.quantity}: ${formatMoney(item.unitPriceCents * item.quantity)}`),
+    "",
+    `${deliveryMethod}: ${deliveryDate} - ${deliveryTimeSlot}`,
+    "",
+    "Your order will remain pending until the payment is received and approved by our team.",
+    "If you have any question, simply reply to this email.",
+  ].join("\n");
+
+  return {
+    subject: `Your Elamora order ${order.reference} - bank transfer instructions`,
+    html,
+    text,
+  };
+}
+
+export async function sendOrderAcknowledgmentEmail(input: OrderAcknowledgmentEmailInput) {
+  const email = buildOrderAcknowledgmentEmail(input);
+
+  return sendEmail({
+    to: input.to,
+    subject: email.subject,
+    html: email.html,
+    text: email.text,
+  });
+}
+
+
 export type AdminNewOrderEmailInput = {
   to: string;
   adminOrderUrl: string;

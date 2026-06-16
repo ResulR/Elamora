@@ -12,7 +12,12 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { config } from "./config.js";
 import { checkDatabase, pool } from "./db.js";
-import { sendAdminNewOrderEmail, sendOrderPaidEmail, sendOrderStatusNotificationEmail } from "./email.js";
+import {
+  sendAdminNewOrderEmail,
+  sendOrderPaidEmail,
+  sendOrderStatusNotificationEmail,
+  sendOrderAcknowledgmentEmail,
+} from "./email.js";
 import { logAdminAction } from "./admin-audit.js";
 import { logger, logError } from "./logger.js";
 import { requireAdmin, type AdminRequest } from "./middleware/require-admin.js";
@@ -623,6 +628,7 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
 
     await client.query("COMMIT");
 
+    void sendOrderAcknowledgmentEmailForOrder(order.id, confirmationToken);
     void sendAdminNewOrderEmailForOrder(order.id);
 
     return res.status(201).json({
@@ -1697,6 +1703,99 @@ app.patch(
   }
 );
 
+
+
+async function sendOrderAcknowledgmentEmailForOrder(orderId: string, confirmationToken: string) {
+  const notificationType = "order_acknowledgment";
+
+  const notificationResult = await pool.query(
+    `
+      INSERT INTO order_notifications (order_id, notification_type, recipient_email, status, provider)
+      SELECT id, $2, customer_email, 'pending', 'resend'
+      FROM orders
+      WHERE id = $1
+      ON CONFLICT (order_id, notification_type) DO NOTHING
+      RETURNING id
+    `,
+    [orderId, notificationType]
+  );
+
+  const notification = notificationResult.rows[0];
+
+  if (!notification) {
+    return;
+  }
+
+  try {
+    const orderResult = await pool.query(
+      `
+        SELECT *
+        FROM orders
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [orderId]
+    );
+
+    const order = orderResult.rows[0];
+
+    if (!order) {
+      throw new Error("order_not_found_for_acknowledgment_email");
+    }
+
+    const itemsResult = await pool.query(
+      `
+        SELECT *
+        FROM order_items
+        WHERE order_id = $1
+        ORDER BY created_at ASC
+      `,
+      [order.id]
+    );
+
+    const publicBaseUrl = config.corsOrigin.replace(/\/$/, "");
+    const confirmationUrl = `${publicBaseUrl}/confirmation?reference=${encodeURIComponent(order.reference)}&token=${encodeURIComponent(confirmationToken)}`;
+
+    const result = await sendOrderAcknowledgmentEmail({
+      to: order.customer_email,
+      confirmationUrl,
+      bankTransfer: config.bankTransfer,
+      order: mapOrderRow(order),
+      items: itemsResult.rows.map(mapOrderItemRow),
+    });
+
+    await pool.query(
+      `
+        UPDATE order_notifications
+        SET status = 'sent',
+            provider_message_id = $2,
+            error_message = NULL,
+            sent_at = now()
+        WHERE id = $1
+      `,
+      [notification.id, result.providerMessageId]
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown_email_error";
+
+    logger.error({
+      event: "order_acknowledgment_email_failed",
+      orderId,
+      notificationId: notification.id,
+      error: message,
+    });
+
+    await pool.query(
+      `
+        UPDATE order_notifications
+        SET status = 'failed',
+            error_message = $2
+        WHERE id = $1
+      `,
+      [notification.id, message.slice(0, 1000)]
+    );
+  }
+}
 
 
 async function sendAdminNewOrderEmailForOrder(orderId: string) {
