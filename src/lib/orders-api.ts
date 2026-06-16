@@ -86,6 +86,11 @@ interface ApiOrderResponse {
   error?: string;
 }
 
+interface ApiOkResponse {
+  ok: boolean;
+  error?: string;
+}
+
 export interface AdminOrdersPagination {
   page: number;
   pageSize: number;
@@ -176,6 +181,21 @@ export async function getPublicOrder(reference: string, token: string): Promise<
   }
 
   return data.order;
+}
+
+export async function requestOrderRecapEmail(reference: string, token: string): Promise<void> {
+  const response = await fetch(
+    `/api/orders/confirmation/${encodeURIComponent(reference)}/resend-email?token=${encodeURIComponent(token)}`,
+    {
+      method: "POST",
+    }
+  );
+
+  const data = await response.json().catch(() => null) as ApiOkResponse | null;
+
+  if (!response.ok || !data?.ok) {
+    throw new Error(data?.error || "Could not send recap email");
+  }
 }
 
 function buildAdminOrdersQuery(filters: AdminOrdersFilters = {}) {

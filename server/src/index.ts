@@ -763,6 +763,44 @@ app.get("/api/orders/confirmation/:reference", publicOrderLimiter, async (req: R
   });
 });
 
+app.post("/api/orders/confirmation/:reference/resend-email", publicOrderLimiter, async (req: Request, res: Response) => {
+  const token = String(req.query.token ?? "").trim();
+
+  if (!token) {
+    return res.status(400).json({ ok: false, error: "Missing confirmation token" });
+  }
+
+  const orderResult = await pool.query(
+    `
+      SELECT id
+      FROM orders
+      WHERE reference = $1
+        AND confirmation_token_hash = $2
+      LIMIT 1
+    `,
+    [req.params.reference, hashConfirmationToken(token)]
+  );
+
+  const order = orderResult.rows[0];
+
+  if (!order) {
+    return res.status(404).json({ ok: false, error: "Order not found" });
+  }
+
+  try {
+    await sendOrderRecapEmailForOrder(order.id, token);
+
+    return res.json({ ok: true });
+  } catch (error) {
+    logError(error, "request_failed");
+
+    return res.status(500).json({
+      ok: false,
+      error: "Could not send recap email",
+    });
+  }
+});
+
 app.get("/api/orders/:reference", async (_req: Request, res: Response) => {
   return res.status(410).json({
     ok: false,
@@ -1834,6 +1872,117 @@ async function sendOrderAcknowledgmentEmailForOrder(orderId: string, confirmatio
       `,
       [notification.id, message.slice(0, 1000)]
     );
+  }
+}
+
+
+async function sendOrderRecapEmailForOrder(orderId: string, confirmationToken: string) {
+  const notificationType = "order_recap_requested";
+
+  const notificationResult = await pool.query(
+    `
+      INSERT INTO order_notifications (
+        order_id,
+        notification_type,
+        recipient_email,
+        status,
+        provider,
+        provider_message_id,
+        error_message,
+        sent_at
+      )
+      SELECT id, $2, customer_email, 'pending', 'resend', NULL, NULL, NULL
+      FROM orders
+      WHERE id = $1
+      ON CONFLICT (order_id, notification_type)
+      DO UPDATE SET
+        recipient_email = EXCLUDED.recipient_email,
+        status = 'pending',
+        provider = 'resend',
+        provider_message_id = NULL,
+        error_message = NULL,
+        sent_at = NULL
+      RETURNING id
+    `,
+    [orderId, notificationType]
+  );
+
+  const notification = notificationResult.rows[0];
+
+  if (!notification) {
+    throw new Error("order_notification_not_created");
+  }
+
+  try {
+    const orderResult = await pool.query(
+      `
+        SELECT *
+        FROM orders
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [orderId]
+    );
+
+    const order = orderResult.rows[0];
+
+    if (!order) {
+      throw new Error("order_not_found_for_recap_email");
+    }
+
+    const itemsResult = await pool.query(
+      `
+        SELECT *
+        FROM order_items
+        WHERE order_id = $1
+        ORDER BY created_at ASC
+      `,
+      [order.id]
+    );
+
+    const publicBaseUrl = config.corsOrigin.replace(/\/$/, "");
+    const confirmationUrl = `${publicBaseUrl}/confirmation?reference=${encodeURIComponent(order.reference)}&token=${encodeURIComponent(confirmationToken)}`;
+
+    const result = await sendOrderAcknowledgmentEmail({
+      to: order.customer_email,
+      confirmationUrl,
+      bankTransfer: config.bankTransfer,
+      order: mapOrderRow(order),
+      items: itemsResult.rows.map(mapOrderItemRow),
+    });
+
+    await pool.query(
+      `
+        UPDATE order_notifications
+        SET status = 'sent',
+            provider_message_id = $2,
+            error_message = NULL,
+            sent_at = now()
+        WHERE id = $1
+      `,
+      [notification.id, result.providerMessageId]
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown_email_error";
+
+    logger.error({
+      event: "order_recap_email_failed",
+      orderId,
+      notificationId: notification.id,
+      error: message,
+    });
+
+    await pool.query(
+      `
+        UPDATE order_notifications
+        SET status = 'failed',
+            error_message = $2
+        WHERE id = $1
+      `,
+      [notification.id, message.slice(0, 1000)]
+    );
+
+    throw error;
   }
 }
 

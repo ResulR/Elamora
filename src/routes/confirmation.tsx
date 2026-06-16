@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Mail } from "lucide-react";
 import {
   getBankTransferInfo,
   getPublicOrder,
+  requestOrderRecapEmail,
   type ApiOrder,
   type BankTransferInfo,
 } from "@/lib/orders-api";
@@ -15,6 +16,7 @@ export const Route = createFileRoute("/confirmation")({
     meta: [
       { title: "Order confirmed - Elamora" },
       { name: "description", content: "Your order has been received." },
+      { name: "referrer", content: "no-referrer" },
     ],
   }),
   component: ConfirmationPage,
@@ -23,6 +25,8 @@ export const Route = createFileRoute("/confirmation")({
 function ConfirmationPage() {
   const [order, setOrder] = useState<ApiOrder | null>(null);
   const [bankTransferInfo, setBankTransferInfo] = useState<BankTransferInfo | null>(null);
+  const [confirmationAccess, setConfirmationAccess] = useState<{ reference: string; token: string } | null>(null);
+  const [recapStatus, setRecapStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -31,9 +35,12 @@ function ConfirmationPage() {
     const token = params.get("token");
 
     if (!reference || !token) {
+      setConfirmationAccess(null);
       setIsLoading(false);
       return;
     }
+
+    setConfirmationAccess({ reference, token });
 
     Promise.all([getPublicOrder(reference, token), getBankTransferInfo()])
       .then(([loadedOrder, loadedBankTransferInfo]) => {
@@ -76,6 +83,22 @@ function ConfirmationPage() {
     );
   }
 
+
+  async function handleSendRecapEmail() {
+    if (!confirmationAccess || recapStatus === "sending") {
+      return;
+    }
+
+    setRecapStatus("sending");
+
+    try {
+      await requestOrderRecapEmail(confirmationAccess.reference, confirmationAccess.token);
+      setRecapStatus("sent");
+    } catch {
+      setRecapStatus("error");
+    }
+  }
+
   return (
     <AppLayout>
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-20 text-center">
@@ -88,6 +111,28 @@ function ConfirmationPage() {
           Your order has been saved. Please complete the bank transfer using the details below.
           We will prepare your order after the payment is received and approved.
         </p>
+
+        <div className="mt-6 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4 text-left">
+          <p className="text-sm font-medium">Save this page or check your email.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            This private page contains your order details and bank transfer instructions. Avoid sharing the link.
+          </p>
+          <button
+            type="button"
+            onClick={() => void handleSendRecapEmail()}
+            disabled={recapStatus === "sending"}
+            className="mt-4 inline-flex items-center gap-2 rounded-full border border-primary/30 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Mail className="h-4 w-4" />
+            {recapStatus === "sending" ? "Sending..." : "Send me a recap email"}
+          </button>
+          {recapStatus === "sent" ? (
+            <p className="mt-2 text-xs text-success">Recap email sent.</p>
+          ) : null}
+          {recapStatus === "error" ? (
+            <p className="mt-2 text-xs text-destructive">Could not send the recap email. Please try again later.</p>
+          ) : null}
+        </div>
 
         <div className="mt-8 bg-surface/80 border border-border/60 rounded-2xl p-6 shadow-soft text-left">
           <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5 mb-6">
