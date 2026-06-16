@@ -6,22 +6,33 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+const apiProxyTarget = process.env.VITE_API_PROXY_TARGET?.trim() || "http://127.0.0.1:4300";
+const pointsToProductionApi = /^https:\/\/(www\.)?elamora\.eu\/?$/i.test(apiProxyTarget);
+
+if (pointsToProductionApi && process.env.ALLOW_PROD_API_PROXY !== "true") {
+  throw new Error(
+    [
+      "Refusing to proxy local Vite dev traffic to the production Elamora API.",
+      "Use a local API target, for example VITE_API_PROXY_TARGET=http://127.0.0.1:4300.",
+      "If you intentionally need to inspect production traffic, set ALLOW_PROD_API_PROXY=true explicitly.",
+    ].join(" ")
+  );
+}
+
 export default defineConfig({
   tanstackStart: {
-    // Redirect TanStack Start's bundled server entry to src/server.ts.
     server: { entry: "server" },
   },
   vite: {
     server: {
       allowedHosts: ["elamora.eu", "www.elamora.eu"],
-      // Proxy /api/* to the production API during local development.
-      // The Express API server runs on elamora.eu and requires a DB connection
-      // that is not available locally — proxying to prod is the simplest solution.
       proxy: {
         "/api": {
-          target: "https://elamora.eu",
+          target: apiProxyTarget,
           changeOrigin: true,
-          secure: true,
+          secure:
+            !apiProxyTarget.startsWith("http://127.0.0.1") &&
+            !apiProxyTarget.startsWith("http://localhost"),
         },
       },
     },
