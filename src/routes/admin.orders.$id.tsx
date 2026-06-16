@@ -4,6 +4,7 @@ import { AdminLayout } from "@/components/layout/AdminLayout";
 import { EmptyState } from "@/components/ui-kit/EmptyState";
 import {
   getAdminOrder,
+  sendAdminOrderPaymentReminder,
   updateAdminOrderPaymentStatus,
   updateAdminOrderStatus,
   type ApiOrder,
@@ -34,8 +35,10 @@ function AdminOrderDetailPage() {
   const [order, setOrder] = useState<ApiOrder | null | undefined>(undefined);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
+  const [isSendingPaymentReminder, setIsSendingPaymentReminder] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentReminderMessage, setPaymentReminderMessage] = useState<string | null>(null);
   const [isShippingFormOpen, setIsShippingFormOpen] = useState(false);
   const [trackingCarrier, setTrackingCarrier] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
@@ -105,6 +108,23 @@ function AdminOrderDetailPage() {
       setPaymentError(error instanceof Error ? error.message : "Could not update payment status.");
     } finally {
       setIsUpdatingPayment(false);
+    }
+  };
+
+  const handleSendPaymentReminder = async () => {
+    if (!order) return;
+
+    setIsSendingPaymentReminder(true);
+    setPaymentError(null);
+    setPaymentReminderMessage(null);
+
+    try {
+      await sendAdminOrderPaymentReminder(order.reference);
+      setPaymentReminderMessage("Payment reminder sent to the customer.");
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : "Could not send payment reminder.");
+    } finally {
+      setIsSendingPaymentReminder(false);
     }
   };
 
@@ -232,7 +252,7 @@ function AdminOrderDetailPage() {
                   <label className="text-sm text-muted-foreground">Current status</label>
                   <select
                     value={order.status}
-                    disabled={isUpdatingStatus || isUpdatingPayment}
+                    disabled={isUpdatingStatus || isUpdatingPayment || isSendingPaymentReminder}
                     onChange={(event) => handleStatusChange(event.target.value as OrderStatus)}
                     className="w-full rounded-xl border border-input bg-background px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   >
@@ -261,12 +281,25 @@ function AdminOrderDetailPage() {
 
                     <button
                       type="button"
-                      disabled={isUpdatingStatus || isUpdatingPayment}
+                      disabled={isUpdatingStatus || isUpdatingPayment || isSendingPaymentReminder}
                       onClick={() => handleStatusChange("confirmed")}
                       className="w-full rounded-xl bg-primary text-primary-foreground px-4 py-3 text-sm font-medium disabled:opacity-50"
                     >
                       Confirm payment
                     </button>
+
+                    <button
+                      type="button"
+                      disabled={isUpdatingStatus || isUpdatingPayment || isSendingPaymentReminder}
+                      onClick={handleSendPaymentReminder}
+                      className="w-full rounded-xl border border-border px-4 py-3 text-sm font-medium hover:border-primary/60 transition-colors disabled:opacity-50"
+                    >
+                      {isSendingPaymentReminder ? "Sending reminder..." : "Send payment reminder to customer"}
+                    </button>
+
+                    {paymentReminderMessage ? (
+                      <p className="text-xs text-primary">{paymentReminderMessage}</p>
+                    ) : null}
                   </div>
                 ) : order.status === "cancelled" || order.status === "refunded" || order.status === "completed" ? (
                   <div className="rounded-2xl border border-border/60 bg-background p-4">
@@ -324,7 +357,7 @@ function AdminOrderDetailPage() {
 
                         <button
                           type="button"
-                          disabled={isUpdatingStatus || isUpdatingPayment}
+                          disabled={isUpdatingStatus || isUpdatingPayment || isSendingPaymentReminder}
                           onClick={handleMarkShipped}
                           className="w-full rounded-xl bg-primary text-primary-foreground px-4 py-3 text-sm font-medium disabled:opacity-50"
                         >

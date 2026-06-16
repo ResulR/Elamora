@@ -15,6 +15,8 @@ import { config } from "./config.js";
 import { checkDatabase, pool } from "./db.js";
 import {
   sendAdminNewOrderEmail,
+  sendAdminPendingPaymentReminderEmail,
+  sendCustomerPaymentReminderEmail,
   sendOrderPaidEmail,
   sendOrderStatusNotificationEmail,
   sendOrderAcknowledgmentEmail,
@@ -1688,6 +1690,59 @@ app.patch(
   }
 );
 
+app.post(
+  "/api/admin/orders/:reference/payment-reminder",
+  requireAdmin,
+  async (req: AdminRequest, res: Response) => {
+    const orderResult = await pool.query(
+      `
+        SELECT id, reference, status, payment_status
+        FROM orders
+        WHERE reference = $1
+        LIMIT 1
+      `,
+      [req.params.reference]
+    );
+
+    const order = orderResult.rows[0];
+
+    if (!order) {
+      return res.status(404).json({ ok: false, error: "Order not found" });
+    }
+
+    if (order.status !== "pending_bank_transfer" || order.payment_status !== "pending") {
+      return res.status(400).json({
+        ok: false,
+        error: "Payment reminder can only be sent for pending bank transfer orders",
+      });
+    }
+
+    try {
+      await sendCustomerPaymentReminderEmailForOrder(order.id);
+
+      await logAdminAction(req, {
+        action: "order.payment_reminder.send",
+        targetType: "order",
+        targetId: order.reference,
+        payload: {
+          status: order.status,
+          paymentStatus: order.payment_status,
+        },
+      });
+
+      return res.json({ ok: true });
+    } catch (error) {
+      logError(error, "request_failed");
+
+      return res.status(500).json({
+        ok: false,
+        error: "Could not send payment reminder",
+      });
+    }
+  }
+);
+
+
 app.patch(
   "/api/admin/orders/:reference/status",
   requireAdmin,
@@ -2174,6 +2229,108 @@ async function sendOrderStatusNotificationEmailForOrder(
     );
   }
 }
+
+async function sendCustomerPaymentReminderEmailForOrder(orderId: string) {
+  const notificationType = "customer_payment_reminder";
+
+  const notificationResult = await pool.query(
+    `
+      INSERT INTO order_notifications (
+        order_id,
+        notification_type,
+        recipient_email,
+        status,
+        provider,
+        provider_message_id,
+        error_message,
+        sent_at
+      )
+      SELECT id, $2, customer_email, 'pending', 'resend', NULL, NULL, NULL
+      FROM orders
+      WHERE id = $1
+        AND status = 'pending_bank_transfer'
+        AND payment_status = 'pending'
+      ON CONFLICT (order_id, notification_type)
+      DO UPDATE SET
+        recipient_email = EXCLUDED.recipient_email,
+        status = 'pending',
+        provider = 'resend',
+        provider_message_id = NULL,
+        error_message = NULL,
+        sent_at = NULL
+      RETURNING id
+    `,
+    [orderId, notificationType]
+  );
+
+  const notification = notificationResult.rows[0];
+
+  if (!notification) {
+    throw new Error("payment_reminder_notification_not_created");
+  }
+
+  try {
+    const orderResult = await pool.query(
+      `
+        SELECT *
+        FROM orders
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [orderId]
+    );
+
+    const order = orderResult.rows[0];
+
+    if (!order) {
+      throw new Error("order_not_found_for_customer_payment_reminder");
+    }
+
+    if (order.status !== "pending_bank_transfer" || order.payment_status !== "pending") {
+      throw new Error("order_not_pending_for_customer_payment_reminder");
+    }
+
+    const result = await sendCustomerPaymentReminderEmail({
+      to: order.customer_email,
+      bankTransfer: config.bankTransfer,
+      order: mapOrderRow(order),
+    });
+
+    await pool.query(
+      `
+        UPDATE order_notifications
+        SET status = 'sent',
+            provider_message_id = $2,
+            error_message = NULL,
+            sent_at = now()
+        WHERE id = $1
+      `,
+      [notification.id, result.providerMessageId]
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown_email_error";
+
+    logger.error({
+      event: "customer_payment_reminder_email_failed",
+      orderId,
+      notificationId: notification.id,
+      error: message,
+    });
+
+    await pool.query(
+      `
+        UPDATE order_notifications
+        SET status = 'failed',
+            error_message = $2
+        WHERE id = $1
+      `,
+      [notification.id, message.slice(0, 1000)]
+    );
+
+    throw error;
+  }
+}
+
 
 async function sendPaymentConfirmedEmailForOrder(orderId: string) {
   const notificationType = "payment_confirmed";

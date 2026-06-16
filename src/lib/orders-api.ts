@@ -307,6 +307,19 @@ export async function updateAdminOrderPaymentStatus(
   return data.order;
 }
 
+export async function sendAdminOrderPaymentReminder(reference: string): Promise<void> {
+  const response = await fetch(`/api/admin/orders/${encodeURIComponent(reference)}/payment-reminder`, {
+    method: "POST",
+    credentials: "include",
+  });
+
+  const data = await response.json().catch(() => null) as ApiOkResponse | null;
+
+  if (!response.ok || !data?.ok) {
+    throw new Error(data?.error || "Could not send payment reminder");
+  }
+}
+
 export async function updateAdminOrderStatus(
   reference: string,
   status: OrderStatus,

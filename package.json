@@ -14,7 +14,8 @@
     "api:start": "node server/dist/index.js",
     "api:create-admin": "node server/dist/scripts/create-admin.js",
     "api:email:test": "node server/dist/scripts/send-test-email.js",
-    "api:dev": "tsx watch server/src/index.ts"
+    "api:dev": "tsx watch server/src/index.ts",
+    "api:pending-payment-reminders": "node server/dist/scripts/send-pending-payment-admin-reminders.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

@@ -617,6 +617,215 @@ export async function sendAdminNewOrderEmail(input: AdminNewOrderEmailInput) {
 }
 
 
+export type AdminPendingPaymentReminderEmailInput = {
+  to: string;
+  adminOrderUrl: string;
+  order: {
+    reference: string;
+    totalCents: number;
+    paymentStatus?: string;
+    customer: {
+      firstName: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+    };
+    createdAt?: string;
+  };
+};
+
+export function buildAdminPendingPaymentReminderEmail(input: AdminPendingPaymentReminderEmailInput) {
+  const order = input.order;
+  const customerName = [order.customer.firstName, order.customer.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  const html = `
+    <!doctype html>
+    <html>
+      <body style="font-family:Arial,Helvetica,sans-serif;color:#1f1f1f;line-height:1.5;">
+        <h1>Payment still pending</h1>
+
+        <p>
+          Order <strong>${escapeHtml(order.reference)}</strong> is still awaiting bank transfer confirmation.
+        </p>
+
+        <p>
+          This reminder is internal. Before contacting the customer, please check whether the bank transfer has already arrived.
+        </p>
+
+        <div style="background:#f8f3f6;border:1px solid #eadde5;border-radius:14px;padding:16px;margin:18px 0;">
+          <p><strong>Customer:</strong> ${escapeHtml(customerName || order.customer.firstName)}</p>
+          <p><strong>Email:</strong> ${escapeHtml(order.customer.email || "-")}</p>
+          <p><strong>Phone:</strong> ${escapeHtml(order.customer.phone || "-")}</p>
+          <p><strong>Total:</strong> ${formatMoney(order.totalCents)}</p>
+          <p><strong>Payment status:</strong> ${escapeHtml(order.paymentStatus || "pending")}</p>
+        </div>
+
+        <p>
+          If the transfer was received, open the order and confirm the payment.
+          If it was not received, use the admin button to send a payment reminder to the customer.
+        </p>
+
+        <p>
+          <a href="${escapeHtml(input.adminOrderUrl)}" style="display:inline-block;padding:10px 16px;background:#7f4f73;color:#ffffff;text-decoration:none;border-radius:999px;">
+            Open order in admin
+          </a>
+        </p>
+      </body>
+    </html>
+  `;
+
+  const text = [
+    `Payment still pending: ${order.reference}`,
+    "",
+    `Order ${order.reference} is still awaiting bank transfer confirmation.`,
+    "",
+    "This reminder is internal. Before contacting the customer, please check whether the bank transfer has already arrived.",
+    "",
+    "Customer:",
+    customerName || order.customer.firstName,
+    order.customer.email || "-",
+    order.customer.phone || "-",
+    "",
+    `Total: ${formatMoney(order.totalCents)}`,
+    `Payment status: ${order.paymentStatus || "pending"}`,
+    "",
+    "If the transfer was received, open the order and confirm the payment.",
+    "If it was not received, use the admin button to send a payment reminder to the customer.",
+    "",
+    `Admin link: ${input.adminOrderUrl}`,
+  ].join("\n");
+
+  return {
+    subject: `Payment pending for Elamora order ${order.reference}`,
+    html,
+    text,
+  };
+}
+
+export async function sendAdminPendingPaymentReminderEmail(input: AdminPendingPaymentReminderEmailInput) {
+  const email = buildAdminPendingPaymentReminderEmail(input);
+
+  return sendEmail({
+    to: input.to,
+    subject: email.subject,
+    html: email.html,
+    text: email.text,
+  });
+}
+
+export type CustomerPaymentReminderEmailInput = {
+  to: string;
+  bankTransfer: {
+    beneficiary: string;
+    bankName: string;
+    iban: string;
+    currency: string;
+  };
+  order: {
+    reference: string;
+    totalCents: number;
+    paymentReference?: string;
+    customer: {
+      firstName: string;
+      lastName?: string;
+    };
+  };
+};
+
+export function buildCustomerPaymentReminderEmail(input: CustomerPaymentReminderEmailInput) {
+  const order = input.order;
+  const customerName = [order.customer.firstName, order.customer.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  const paymentReference = order.paymentReference || order.reference;
+
+  const html = `
+    <!doctype html>
+    <html>
+      <body style="margin:0;padding:0;background:#f8f3f6;font-family:Arial,Helvetica,sans-serif;color:#2b1f27;">
+        <div style="max-width:640px;margin:0 auto;padding:32px 16px;">
+          <div style="background:#ffffff;border-radius:20px;padding:28px;border:1px solid #eadde5;">
+            <h1 style="margin:0 0 12px;font-size:26px;line-height:1.2;color:#7f4f73;">
+              Reminder for your Elamora order
+            </h1>
+
+            <p style="margin:0 0 18px;font-size:16px;line-height:1.6;">
+              Hi ${escapeHtml(customerName || order.customer.firstName)},<br>
+              This is a friendly reminder that your order is still waiting for bank transfer confirmation.
+            </p>
+
+            <p style="margin:0 0 18px;font-size:14px;line-height:1.6;color:#6f626a;">
+              If you have already made the transfer, thank you. You do not need to do anything else — bank transfers can take a few business days to appear.
+            </p>
+
+            <div style="background:#f8f3f6;border-radius:14px;padding:16px;margin:20px 0;">
+              <p style="margin:0;font-size:14px;color:#7f4f73;">Order reference</p>
+              <p style="margin:4px 0 0;font-size:22px;font-weight:700;">${escapeHtml(order.reference)}</p>
+            </div>
+
+            <h2 style="font-size:18px;margin:24px 0 8px;">Bank transfer details</h2>
+            <div style="background:#fff8fb;border:1px solid #eadde5;border-radius:16px;padding:16px;font-size:15px;line-height:1.7;">
+              <strong>Beneficiary:</strong> ${escapeHtml(input.bankTransfer.beneficiary)}<br>
+              <strong>Bank name:</strong> ${escapeHtml(input.bankTransfer.bankName)}<br>
+              <strong>IBAN:</strong> ${escapeHtml(input.bankTransfer.iban)}<br>
+              <strong>Currency:</strong> ${escapeHtml(input.bankTransfer.currency)}<br>
+              <strong>Amount:</strong> ${formatMoney(order.totalCents)}<br>
+              <strong>Payment reference:</strong> ${escapeHtml(paymentReference)}
+            </div>
+
+            <p style="margin:22px 0 0;font-size:14px;line-height:1.6;color:#6f626a;">
+              If you have any question, simply reply to this email.
+            </p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const text = [
+    "Reminder for your Elamora order",
+    "",
+    `Hi ${customerName || order.customer.firstName},`,
+    "This is a friendly reminder that your order is still waiting for bank transfer confirmation.",
+    "",
+    "If you have already made the transfer, thank you. You do not need to do anything else — bank transfers can take a few business days to appear.",
+    "",
+    `Order reference: ${order.reference}`,
+    "",
+    "Bank transfer details:",
+    `Beneficiary: ${input.bankTransfer.beneficiary}`,
+    `Bank name: ${input.bankTransfer.bankName}`,
+    `IBAN: ${input.bankTransfer.iban}`,
+    `Currency: ${input.bankTransfer.currency}`,
+    `Amount: ${formatMoney(order.totalCents)}`,
+    `Payment reference: ${paymentReference}`,
+    "",
+    "If you have any question, simply reply to this email.",
+  ].join("\n");
+
+  return {
+    subject: `Reminder for your Elamora order ${order.reference}`,
+    html,
+    text,
+  };
+}
+
+export async function sendCustomerPaymentReminderEmail(input: CustomerPaymentReminderEmailInput) {
+  const email = buildCustomerPaymentReminderEmail(input);
+
+  return sendEmail({
+    to: input.to,
+    subject: email.subject,
+    html: email.html,
+    text: email.text,
+  });
+}
+
+
 export type OrderStatusNotificationEmailInput = {
   to: string;
   status: "ready_for_pickup" | "shipped";
