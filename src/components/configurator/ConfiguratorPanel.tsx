@@ -22,6 +22,7 @@ export function ConfiguratorPanel() {
     mobileStep,
     setMobileStep,
     selectedDesign,
+    findCatalogProduct,
     config,
     catalogError,
   } = useConfigurator();
@@ -73,6 +74,8 @@ export function ConfiguratorPanel() {
   }
 
   if (mobileStep === "personalize" && selectedDesign) {
+    const selectedPriceCents =
+      findCatalogProduct(config.bucketId)?.price ?? selectedDesign.basePriceCents;
     return (
       <>
         <div className="max-w-6xl mx-auto px-6 md:px-12 pt-10 flex justify-between items-center">
@@ -112,7 +115,7 @@ export function ConfiguratorPanel() {
                 {new Intl.NumberFormat("en-BE", {
                   style: "currency",
                   currency: "EUR",
-                }).format(selectedDesign.basePriceCents / 100)}
+                }).format(selectedPriceCents / 100)}
               </p>
 
               <div className="flex items-center gap-4 mt-12 mb-8">

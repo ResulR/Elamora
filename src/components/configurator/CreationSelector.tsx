@@ -7,10 +7,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 function Lightbox({
   design,
+  priceCents,
   onClose,
   onSelect,
 }: {
   design: GiftDesign;
+  priceCents: number;
   onClose: () => void;
   onSelect: () => void;
 }) {
@@ -52,7 +54,7 @@ function Lightbox({
           <div className="flex items-start justify-between gap-3 mb-2">
             <h3 className="font-display text-2xl leading-tight">{design.name}</h3>
             <span className="text-sm text-primary font-medium whitespace-nowrap">
-              {formatPrice(design.basePriceCents)}
+              {formatPrice(priceCents)}
             </span>
           </div>
 
@@ -86,7 +88,11 @@ function Lightbox({
 }
 
 export function CreationSelector() {
-  const { setDesign, setMobileStep } = useConfigurator();
+  const { catalog, setDesign, setMobileStep } = useConfigurator();
+
+  const getDesignPriceCents = (design: GiftDesign) =>
+    catalog.buckets.find((bucket) => bucket.name === design.bridgeBucketName)?.price ??
+    design.basePriceCents;
   const [lightbox, setLightbox] = useState<GiftDesign | null>(null);
   const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
 
@@ -104,7 +110,10 @@ export function CreationSelector() {
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-8 max-w-6xl mx-auto">
-        {DESIGN_PRESETS.map((creation) => (
+        {DESIGN_PRESETS.map((creation) => {
+          const priceCents = getDesignPriceCents(creation);
+
+          return (
           <button
             key={creation.id}
             onClick={() => choose(creation)}
@@ -155,15 +164,17 @@ export function CreationSelector() {
             <span className="block h-px w-6 bg-primary/30 mt-2.5" />
 
             <p className="text-primary text-sm mt-2 font-medium">
-              {formatPrice(creation.basePriceCents)}
+              {formatPrice(priceCents)}
             </p>
           </button>
-        ))}
+          );
+        })}
       </div>
 
       {lightbox && (
         <Lightbox
           design={lightbox}
+          priceCents={getDesignPriceCents(lightbox)}
           onClose={() => setLightbox(null)}
           onSelect={() => {
             choose(lightbox);

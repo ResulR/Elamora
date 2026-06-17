@@ -16,6 +16,7 @@ import {
   addCartItem,
   removeCartItem as removeCartItemStorage,
   clearCart,
+  getCartItemCount,
   getCartTotalCents,
 } from "@/lib/cart-storage";
 
@@ -170,7 +171,7 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
   const selectedDesign = useMemo(() => findDesignById(config.designId), [config.designId]);
 
   // Cart derived values
-  const cartCount      = cartItems.length;
+  const cartCount      = useMemo(() => getCartItemCount(cartItems), [cartItems]);
   const cartTotalCents = useMemo(() => getCartTotalCents(cartItems), [cartItems]);
 
   // Cart mutations

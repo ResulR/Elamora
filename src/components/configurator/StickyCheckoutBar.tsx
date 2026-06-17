@@ -38,7 +38,7 @@ export function StickyCheckoutBar() {
     configMode,
     mobileStep, setMobileStep,
     cartCount, cartTotalCents,
-    selectedDesign, config,
+    selectedDesign, config, findCatalogProduct,
     addToCart, setDesign, setFirstName, setMessage, setRibbonColor, setCustomRequests,
   } = useConfigurator();
 
@@ -88,17 +88,20 @@ export function StickyCheckoutBar() {
   if (isStep2) {
     const handleAddToCart = () => {
       if (!hasCreation || !selectedDesign) return;
+      const bucketProduct = findCatalogProduct(config.bucketId);
+
       addToCart({
         id: crypto.randomUUID(),
         designId:       selectedDesign.id,
         creationName:   selectedDesign.name,
         imageUrl:       selectedDesign.imageUrl,
-        basePriceCents: selectedDesign.basePriceCents,
+        basePriceCents: bucketProduct?.price ?? selectedDesign.basePriceCents,
         bucketId:       config.bucketId,
         firstName:      config.firstName,
         message:        config.message,
         ribbonColor:    config.ribbonColor,
         customRequests: config.customRequests,
+        quantity:       1,
       });
       setDesign(null);
       setFirstName("");

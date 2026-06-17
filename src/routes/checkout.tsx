@@ -146,7 +146,7 @@ function CheckoutPage() {
         .filter((item) => item.bucketId)
         .map((item) => ({
           productId: item.bucketId,
-          quantity: 1,
+          quantity: item.quantity,
           colorId: null,
         }));
 
@@ -316,11 +316,13 @@ function CheckoutPage() {
                         <div className="flex items-start justify-between gap-3">
                           <p className="font-medium leading-tight">{item.creationName}</p>
                           <span className="text-sm font-medium text-primary">
-                            {formatPrice(item.basePriceCents)}
+                            {formatPrice(item.basePriceCents * item.quantity)}
                           </span>
                         </div>
                         <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
-                          {item.firstName      && <p>Name: {item.firstName}</p>}
+                          <p>Qty: {item.quantity}</p>
+                          <p>Qty: {item.quantity}</p>
+                        {item.firstName      && <p>Name: {item.firstName}</p>}
                           {item.ribbonColor    && <p>Ribbon: {item.ribbonColor}</p>}
                           {item.message        && <p className="line-clamp-1 italic">{item.message}</p>}
                           {item.customRequests && <p className="line-clamp-1 italic">{item.customRequests}</p>}
@@ -445,7 +447,7 @@ function CheckoutPage() {
               <h2 className="font-display text-lg mb-4">
                 Your order
                 <span className="ml-2 text-sm font-normal text-muted-foreground">
-                  ({cartItems.length} creation{cartItems.length > 1 ? "s" : ""})
+                  ({cartItems.reduce((sum, item) => sum + item.quantity, 0)} item{cartItems.reduce((sum, item) => sum + item.quantity, 0) > 1 ? "s" : ""})
                 </span>
               </h2>
 
@@ -463,7 +465,7 @@ function CheckoutPage() {
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-sm font-medium leading-tight">{item.creationName}</p>
                         <span className="text-sm font-medium text-primary flex-shrink-0">
-                          {formatPrice(item.basePriceCents)}
+                          {formatPrice(item.basePriceCents * item.quantity)}
                         </span>
                       </div>
                       <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">

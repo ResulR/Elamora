@@ -10,11 +10,13 @@ import {
   type CartItem,
   loadCartItems,
   removeCartItem,
+  updateCartItemQuantity,
   clearCart,
+  getCartItemCount,
   getCartTotalCents,
 } from "@/lib/cart-storage";
 import { formatPrice } from "@/lib/format";
-import { X, Trash2, ShoppingBag } from "lucide-react";
+import { Minus, Plus, X, Trash2, ShoppingBag } from "lucide-react";
 
 export function GlobalCartDrawer() {
   const navigate = useNavigate();
@@ -64,6 +66,11 @@ export function GlobalCartDrawer() {
     setItems(updated);
   };
 
+  const handleQuantityChange = (id: string, quantity: number) => {
+    const updated = updateCartItemQuantity(id, quantity);
+    setItems(updated);
+  };
+
   const handleProceed = () => {
     setOpen(false);
     void navigate({ to: "/checkout" });
@@ -74,7 +81,7 @@ export function GlobalCartDrawer() {
   };
 
   const total = getCartTotalCents(items);
-  const count = items.length;
+  const count = getCartItemCount(items);
 
   return (
     <AnimatePresence>
@@ -169,14 +176,49 @@ export function GlobalCartDrawer() {
                             <p className="italic opacity-50">No personalization</p>
                           )}
                         </div>
-                        <p className="mt-1.5 text-sm font-medium text-primary">{formatPrice(item.basePriceCents)}</p>
+                        <div className="mt-3 flex items-center justify-between gap-3">
+                          <div className="inline-flex items-center rounded-full border border-border bg-background/80 overflow-hidden">
+                            <button
+                              type="button"
+                              onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                              disabled={item.quantity <= 1}
+                              className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                              aria-label={`Decrease quantity for ${item.creationName}`}
+                            >
+                              <Minus className="h-3.5 w-3.5" />
+                            </button>
+                            <span className="min-w-8 text-center text-xs font-semibold tabular-nums">
+                              {item.quantity}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                              disabled={item.quantity >= 99}
+                              className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                              aria-label={`Increase quantity for ${item.creationName}`}
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+
+                          <div className="text-right">
+                            <p className="text-sm font-medium text-primary">
+                              {formatPrice(item.basePriceCents * item.quantity)}
+                            </p>
+                            {item.quantity > 1 && (
+                              <p className="text-[10px] text-muted-foreground">
+                                {formatPrice(item.basePriceCents)} each
+                              </p>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
 
                   <p className="text-[11px] text-muted-foreground italic leading-relaxed pt-2 border-t border-border/40">
-                    Multiple gifts are combined in one order.
-                    Personalizations are included per creation.
+                    Quantities duplicate the same personalized creation.
+                    Add separate creations for different names or messages.
                   </p>
                 </div>
               )}

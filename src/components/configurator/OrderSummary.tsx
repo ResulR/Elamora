@@ -17,6 +17,7 @@ export function OrderSummary() {
     selectedDesign,
     mobileStep,
     totalPrice,
+    findCatalogProduct,
     addToCart,
     setDesign,
     setFirstName,
@@ -29,12 +30,14 @@ export function OrderSummary() {
   const handleAddToCart = () => {
     if (!selectedDesign) return;
 
+    const bucketProduct = findCatalogProduct(config.bucketId);
+
     addToCart({
       id: crypto.randomUUID(),
       designId: selectedDesign.id,
       creationName: selectedDesign.name,
       imageUrl: selectedDesign.imageUrl,
-      basePriceCents: selectedDesign.basePriceCents,
+      basePriceCents: bucketProduct?.price ?? selectedDesign.basePriceCents,
       bucketId: config.bucketId,
       firstName: config.firstName,
       message: config.message,

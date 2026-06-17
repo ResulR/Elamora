@@ -1,17 +1,17 @@
 import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import { ShoppingBag } from "lucide-react";
-import { loadCartItems, openGlobalCart } from "@/lib/cart-storage";
+import { getCartItemCount, loadCartItems, openGlobalCart } from "@/lib/cart-storage";
 
 export function PublicHeader() {
   const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
     // Read initial count
-    setCartCount(loadCartItems().length);
+    setCartCount(getCartItemCount(loadCartItems()));
 
     // Refresh whenever cart changes
-    const onUpdate = () => setCartCount(loadCartItems().length);
+    const onUpdate = () => setCartCount(getCartItemCount(loadCartItems()));
     window.addEventListener("elamora-cart-updated", onUpdate);
     return () => window.removeEventListener("elamora-cart-updated", onUpdate);
   }, []);

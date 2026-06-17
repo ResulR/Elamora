@@ -17,6 +17,7 @@ export type CartItem = {
   message: string;
   ribbonColor: string;
   customRequests: string;
+  quantity: number;
 };
 
 export const CART_KEY = "elamora_cart_items";
@@ -32,6 +33,11 @@ function asNullableString(value: unknown): string | null {
 function asSafePriceCents(value: unknown): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(Math.trunc(value), 1_000_000));
+}
+
+function asSafeQuantity(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 1;
+  return Math.max(1, Math.min(Math.trunc(value), 99));
 }
 
 function normalizeCartItem(value: unknown): CartItem | null {
@@ -59,6 +65,7 @@ function normalizeCartItem(value: unknown): CartItem | null {
     message: asString(item.message),
     ribbonColor: asString(item.ribbonColor),
     customRequests: asString(item.customRequests),
+    quantity: asSafeQuantity(item.quantity),
   };
 }
 
@@ -124,11 +131,27 @@ export function addCartItem(item: CartItem): CartItem[] {
   return loadCartItems();
 }
 
+export function updateCartItemQuantity(id: string, quantity: number): CartItem[] {
+  const current = loadCartItems();
+  const safeQuantity = Math.max(1, Math.min(Math.trunc(quantity), 99));
+
+  const updated = current.map((item) =>
+    item.id === id ? { ...item, quantity: safeQuantity } : item
+  );
+
+  saveCartItems(updated);
+  return loadCartItems();
+}
+
 export function removeCartItem(id: string): CartItem[] {
   const current = loadCartItems();
   const updated = current.filter((i) => i.id !== id);
   saveCartItems(updated);
   return updated;
+}
+
+export function getCartItemCount(items: CartItem[]): number {
+  return normalizeCartItems(items).reduce((sum, item) => sum + item.quantity, 0);
 }
 
 export function clearCart(): void {
@@ -141,7 +164,10 @@ export function clearCart(): void {
 // ── Derived ───────────────────────────────────────────────────────────────────
 
 export function getCartTotalCents(items: CartItem[]): number {
-  return normalizeCartItems(items).reduce((sum, item) => sum + item.basePriceCents, 0);
+  return normalizeCartItems(items).reduce(
+    (sum, item) => sum + item.basePriceCents * item.quantity,
+    0
+  );
 }
 
 /**
@@ -156,12 +182,13 @@ export function buildCartCustomMessage(items: CartItem[]): string {
     if (item.message)       parts.push(`Message: ${item.message}`);
     if (item.ribbonColor)   parts.push(`Ribbon color: ${item.ribbonColor}`);
     if (item.customRequests) parts.push(`Special request: ${item.customRequests}`);
+    if (item.quantity > 1) parts.push(`Quantity: ${item.quantity}`);
     return parts.join("\n");
   }
 
   return items
     .map((item, i) => {
-      const lines: string[] = [`${i + 1}. ${item.creationName}`];
+      const lines: string[] = [`${i + 1}. ${item.creationName}${item.quantity > 1 ? ` x${item.quantity}` : ""}`];
       if (item.firstName)     lines.push(`   Name: ${item.firstName}`);
       if (item.message)       lines.push(`   Message: ${item.message}`);
       if (item.ribbonColor)   lines.push(`   Ribbon color: ${item.ribbonColor}`);

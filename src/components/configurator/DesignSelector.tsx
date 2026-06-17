@@ -3,12 +3,17 @@ import { DESIGN_PRESETS } from "@/lib/design-presets";
 import { formatPrice } from "@/lib/format";
 
 export function DesignSelector() {
-  const { config, setDesign } = useConfigurator();
+  const { catalog, config, setDesign } = useConfigurator();
+
+  const getDesignPriceCents = (design: (typeof DESIGN_PRESETS)[number]) =>
+    catalog.buckets.find((bucket) => bucket.name === design.bridgeBucketName)?.price ??
+    design.basePriceCents;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       {DESIGN_PRESETS.map((design) => {
         const active = config.designId === design.id;
+        const priceCents = getDesignPriceCents(design);
         return (
           <button
             key={design.id}
@@ -66,7 +71,7 @@ export function DesignSelector() {
                   {design.name}
                 </p>
                 <p className="text-xs text-primary font-medium whitespace-nowrap flex-shrink-0">
-                  from {formatPrice(design.basePriceCents)}
+                  from {formatPrice(priceCents)}
                 </p>
               </div>
               <p className="text-xs text-muted-foreground leading-snug mb-2">
