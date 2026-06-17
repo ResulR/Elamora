@@ -29,6 +29,10 @@ export async function fetchShippingQuote(params: {
 
   const data = (await response.json().catch(() => null)) as ShippingQuoteResponse | null;
 
+  if (response.status === 429) {
+    throw new Error("shipping_rate_limited");
+  }
+
   if (!response.ok || !data?.ok) {
     throw new Error(data?.error || "Could not calculate delivery fee");
   }
@@ -77,6 +81,10 @@ export async function fetchShippingAvailability(params: {
   });
 
   const data = (await response.json().catch(() => null)) as ShippingAvailabilityResponse | null;
+
+  if (response.status === 429) {
+    throw new Error("shipping_rate_limited");
+  }
 
   if (!response.ok || !data?.ok) {
     throw new Error(data?.error || "Could not check delivery availability");

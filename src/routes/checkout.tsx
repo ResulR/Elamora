@@ -98,6 +98,7 @@ function CheckoutPage() {
     if (!shipping.addressLine1.trim()) return false;
     if (!shipping.postalCode.trim()) return false;
     if (!shipping.city.trim()) return false;
+    if (!shipping.deliveryDate.trim()) return false;
     if (shipping.deliveryDate && !shipping.deliveryTimeSlot) return false;
     return Boolean(shippingQuote?.available);
   }, [shipping, shippingQuote]);
@@ -107,7 +108,7 @@ function CheckoutPage() {
     if (form && !form.reportValidity()) return;
 
     if (!isDeliveryReady) {
-      setSubmitError("Please complete a valid delivery address before reviewing your order.");
+      setSubmitError("Please complete a valid delivery address and choose a delivery date before reviewing your order.");
       return;
     }
 
@@ -127,7 +128,7 @@ function CheckoutPage() {
     if (!hasValidItem) return;
 
     if (!isDeliveryReady) {
-      setSubmitError("Please complete a valid delivery address before placing your order.");
+      setSubmitError("Please complete a valid delivery address and choose a delivery date before placing your order.");
       return;
     }
 
@@ -197,6 +198,10 @@ function CheckoutPage() {
         setSubmitError("This delivery area is not covered yet.");
       } else if (message === "missing_shipping_address") {
         setSubmitError("Please complete your delivery address.");
+      } else if (message === "missing_delivery_date") {
+        setSubmitError("Please choose a delivery date.");
+      } else if (message === "delivery_date_unavailable") {
+        setSubmitError("This delivery date is not available. Please choose another date.");
       } else {
         setSubmitError("Could not place your order. Please try again.");
       }
@@ -277,7 +282,7 @@ function CheckoutPage() {
                     type="button"
                     onClick={goToReview}
                     disabled={!hasValidItem || !isDeliveryReady}
-                    className="px-7 py-3 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity shadow-soft disabled:opacity-60"
+                    className="px-7 py-3 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity shadow-soft disabled:opacity-45 disabled:cursor-not-allowed"
                   >
                     Continue to review →
                   </button>
@@ -428,7 +433,7 @@ function CheckoutPage() {
                   <button
                     type="submit"
                     disabled={isSubmitting || !hasValidItem || !isDeliveryReady || !termsAccepted}
-                    className="px-7 py-3 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity shadow-soft disabled:opacity-60"
+                    className="px-7 py-3 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity shadow-soft disabled:opacity-45 disabled:cursor-not-allowed"
                   >
                     {isSubmitting ? "Saving order..." : "Confirm order ✦"}
                   </button>

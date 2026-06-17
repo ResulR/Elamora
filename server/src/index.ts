@@ -132,6 +132,18 @@ const publicOrderLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const shippingLookupLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 240,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    ok: false,
+    error: "shipping_rate_limited",
+  },
+});
+
+
 const ADMIN_SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
 const ADMIN_COOKIE_MAX_AGE_MS = ADMIN_SESSION_MAX_AGE_SECONDS * 1000;
 
@@ -182,6 +194,14 @@ const createOrderSchema = z.object({
     )
     .min(1)
     .max(50),
+}).superRefine((value, ctx) => {
+  if (value.customer.deliveryMethod === "delivery" && !value.customer.deliveryDate.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["customer", "deliveryDate"],
+      message: "missing_delivery_date",
+    });
+  }
 });
 
 const updateOrderStatusSchema = z.object({
@@ -310,7 +330,7 @@ const shippingQuoteSchema = z.object({
   country: z.string().trim().min(2).max(2).transform((value) => value.toUpperCase()),
 });
 
-app.get("/api/shipping/quote", publicOrderLimiter, async (req: Request, res: Response) => {
+app.get("/api/shipping/quote", shippingLookupLimiter, async (req: Request, res: Response) => {
   const parsed = shippingQuoteSchema.safeParse(req.query);
 
   if (!parsed.success) {
@@ -376,7 +396,7 @@ const shippingAvailabilitySchema = z.object({
   country: z.string().trim().min(2).max(2).optional().default("BE").transform((value) => value.toUpperCase()),
 });
 
-app.get("/api/shipping/availability", publicOrderLimiter, async (req: Request, res: Response) => {
+app.get("/api/shipping/availability", shippingLookupLimiter, async (req: Request, res: Response) => {
   const parsed = shippingAvailabilitySchema.safeParse(req.query);
 
   if (!parsed.success) {
@@ -413,10 +433,15 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
   const parsed = createOrderSchema.safeParse(req.body);
 
   if (!parsed.success) {
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    const deliveryDateError = fieldErrors.customer?.some((message) =>
+      String(message).includes("missing_delivery_date")
+    );
+
     return res.status(400).json({
       ok: false,
-      error: "Invalid order payload",
-      details: parsed.error.flatten().fieldErrors,
+      error: deliveryDateError ? "missing_delivery_date" : "Invalid order payload",
+      details: fieldErrors,
     });
   }
 

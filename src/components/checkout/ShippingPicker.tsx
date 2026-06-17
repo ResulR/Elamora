@@ -56,10 +56,31 @@ export function ShippingPicker({ value, onChange, onQuoteChange }: ShippingPicke
     value.postalCode.trim().length >= 2 &&
     value.country.trim().length === 2;
 
+  const quoteUnavailable =
+    value.deliveryMethod === "delivery" &&
+    canQuote &&
+    quote !== null &&
+    !quote.available;
+
+  const canCheckAvailability =
+    value.deliveryMethod === "delivery" &&
+    Boolean(value.deliveryDate) &&
+    Boolean(quote?.available);
+
   const sundaySelected = false;
 
   useEffect(() => {
-    if (value.deliveryMethod !== "delivery" || !value.deliveryDate || sundaySelected) {
+    if (value.deliveryMethod === "delivery" && !value.deliveryDate) {
+      onChange({
+        ...value,
+        deliveryDate: tomorrowDate(),
+        deliveryTimeSlot: "",
+      });
+    }
+  }, [onChange, value]);
+
+  useEffect(() => {
+    if (!canCheckAvailability || sundaySelected) {
       setAvailability(null);
       setAvailabilityError(null);
       setIsAvailabilityLoading(false);
@@ -76,7 +97,7 @@ export function ShippingPicker({ value, onChange, onQuoteChange }: ShippingPicke
       .then((result) => {
         setAvailability(result);
 
-        if (result.slots.length === 1 && !value.deliveryTimeSlot) {
+        if (result.slots.length > 0 && !value.deliveryTimeSlot) {
           onChange({ ...value, deliveryTimeSlot: result.slots[0].value });
         }
 
@@ -84,26 +105,38 @@ export function ShippingPicker({ value, onChange, onQuoteChange }: ShippingPicke
           onChange({ ...value, deliveryTimeSlot: "" });
         }
       })
-      .catch(() => {
+      .catch((error) => {
         setAvailability(null);
-        setAvailabilityError("Could not check delivery availability for this date.");
+        const message = error instanceof Error ? error.message : "";
+        setAvailabilityError(
+          message === "shipping_rate_limited"
+            ? "Delivery slot check is temporarily limited. Please wait a moment and try again."
+            : "Could not check delivery slots for this date. Please try another date."
+        );
       })
       .finally(() => setIsAvailabilityLoading(false));
-  }, [onChange, sundaySelected, value]);
+  }, [canCheckAvailability, onChange, sundaySelected, value]);
 
   useEffect(() => {
+    setQuoteError(null);
+
     if (value.deliveryMethod !== "delivery") {
       setQuote(null);
-      setQuoteError(null);
+      setAvailability(null);
+      setAvailabilityError(null);
       setIsQuoteLoading(false);
+      setIsAvailabilityLoading(false);
       onQuoteChange(null);
       return;
     }
 
     if (!canQuote) {
       setQuote(null);
+      setAvailability(null);
+      setAvailabilityError(null);
       setQuoteError(null);
       setIsQuoteLoading(false);
+      setIsAvailabilityLoading(false);
       onQuoteChange(null);
       return;
     }
@@ -118,12 +151,27 @@ export function ShippingPicker({ value, onChange, onQuoteChange }: ShippingPicke
       })
         .then((result) => {
           setQuote(result);
+          setQuoteError(null);
           onQuoteChange(result);
+
+          if (!result.available) {
+            setAvailability(null);
+            setAvailabilityError(null);
+            setIsAvailabilityLoading(false);
+          }
         })
-        .catch(() => {
+        .catch((error) => {
           setQuote(null);
           onQuoteChange(null);
-          setQuoteError("Could not check delivery for this address.");
+          setAvailability(null);
+          setAvailabilityError(null);
+          setIsAvailabilityLoading(false);
+          const message = error instanceof Error ? error.message : "";
+          setQuoteError(
+            message === "shipping_rate_limited"
+              ? "Delivery check is temporarily limited. Please wait a moment and try again."
+              : "Could not check delivery for this postal code. Please try again."
+          );
         })
         .finally(() => setIsQuoteLoading(false));
     }, 350);
@@ -154,7 +202,14 @@ export function ShippingPicker({ value, onChange, onQuoteChange }: ShippingPicke
             name="deliveryMethod"
             className="mr-2"
             checked={value.deliveryMethod === "delivery"}
-            onChange={() => onChange({ ...value, deliveryMethod: "delivery" })}
+            onChange={() =>
+              onChange({
+                ...value,
+                deliveryMethod: "delivery",
+                deliveryDate: value.deliveryDate || tomorrowDate(),
+                deliveryTimeSlot: "",
+              })
+            }
           />
           <span className="font-medium">Delivery</span>
           <p className="text-xs text-muted-foreground mt-1">
@@ -229,9 +284,10 @@ export function ShippingPicker({ value, onChange, onQuoteChange }: ShippingPicke
 
             <Field
               name="deliveryDate"
-              label="Preferred delivery date"
+              label="Delivery date — as soon as possible"
               type="date"
               min={tomorrowDate()}
+              required
               value={value.deliveryDate}
               onChange={(v) => onChange({ ...updateField(value, "deliveryDate", v), deliveryTimeSlot: "" })}
             />
@@ -257,6 +313,10 @@ export function ShippingPicker({ value, onChange, onQuoteChange }: ShippingPicke
                 ))}
               </select>
             </div>
+
+            <p className="sm:col-span-2 text-xs text-muted-foreground">
+              We automatically select the earliest available delivery date and time slot. You can change them if needed.
+            </p>
 
             <div className="sm:col-span-2">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
