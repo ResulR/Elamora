@@ -22,7 +22,6 @@ import { Route as LegalMentionsRouteImport } from './routes/legal.mentions'
 import { Route as LegalCookiesRouteImport } from './routes/legal.cookies'
 import { Route as LegalConfidentialiteRouteImport } from './routes/legal.confidentialite'
 import { Route as LegalCgvRouteImport } from './routes/legal.cgv'
-import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminProductsRouteImport } from './routes/admin.products'
 import { Route as AdminOrdersIndexRouteImport } from './routes/admin.orders.index'
 import { Route as AdminOrdersIdRouteImport } from './routes/admin.orders.$id'
@@ -92,11 +91,6 @@ const LegalCgvRoute = LegalCgvRouteImport.update({
   path: '/legal/cgv',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminSettingsRoute = AdminSettingsRouteImport.update({
-  id: '/admin/settings',
-  path: '/admin/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminProductsRoute = AdminProductsRouteImport.update({
   id: '/admin/products',
   path: '/admin/products',
@@ -121,7 +115,6 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
   '/admin/products': typeof AdminProductsRoute
-  '/admin/settings': typeof AdminSettingsRoute
   '/legal/cgv': typeof LegalCgvRoute
   '/legal/confidentialite': typeof LegalConfidentialiteRoute
   '/legal/cookies': typeof LegalCookiesRoute
@@ -140,7 +133,6 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
   '/admin/products': typeof AdminProductsRoute
-  '/admin/settings': typeof AdminSettingsRoute
   '/legal/cgv': typeof LegalCgvRoute
   '/legal/confidentialite': typeof LegalConfidentialiteRoute
   '/legal/cookies': typeof LegalCookiesRoute
@@ -160,7 +152,6 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
   '/admin/products': typeof AdminProductsRoute
-  '/admin/settings': typeof AdminSettingsRoute
   '/legal/cgv': typeof LegalCgvRoute
   '/legal/confidentialite': typeof LegalConfidentialiteRoute
   '/legal/cookies': typeof LegalCookiesRoute
@@ -181,7 +172,6 @@ export interface FileRouteTypes {
     | '/contact'
     | '/login'
     | '/admin/products'
-    | '/admin/settings'
     | '/legal/cgv'
     | '/legal/confidentialite'
     | '/legal/cookies'
@@ -200,7 +190,6 @@ export interface FileRouteTypes {
     | '/contact'
     | '/login'
     | '/admin/products'
-    | '/admin/settings'
     | '/legal/cgv'
     | '/legal/confidentialite'
     | '/legal/cookies'
@@ -219,7 +208,6 @@ export interface FileRouteTypes {
     | '/contact'
     | '/login'
     | '/admin/products'
-    | '/admin/settings'
     | '/legal/cgv'
     | '/legal/confidentialite'
     | '/legal/cookies'
@@ -239,7 +227,6 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   LoginRoute: typeof LoginRoute
   AdminProductsRoute: typeof AdminProductsRoute
-  AdminSettingsRoute: typeof AdminSettingsRoute
   LegalCgvRoute: typeof LegalCgvRoute
   LegalConfidentialiteRoute: typeof LegalConfidentialiteRoute
   LegalCookiesRoute: typeof LegalCookiesRoute
@@ -344,13 +331,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LegalCgvRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/settings': {
-      id: '/admin/settings'
-      path: '/admin/settings'
-      fullPath: '/admin/settings'
-      preLoaderRoute: typeof AdminSettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/admin/products': {
       id: '/admin/products'
       path: '/admin/products'
@@ -383,7 +363,6 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   LoginRoute: LoginRoute,
   AdminProductsRoute: AdminProductsRoute,
-  AdminSettingsRoute: AdminSettingsRoute,
   LegalCgvRoute: LegalCgvRoute,
   LegalConfidentialiteRoute: LegalConfidentialiteRoute,
   LegalCookiesRoute: LegalCookiesRoute,
