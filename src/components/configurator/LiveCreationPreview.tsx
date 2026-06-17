@@ -23,9 +23,9 @@ export function LiveCreationPreview({
         />
 
         {cleanName && (
-          <div className="absolute inset-x-[24%] bottom-[18%] flex justify-center pointer-events-none">
-            <div className="min-h-10 px-5 py-2 rounded-full bg-white/82 backdrop-blur-sm border border-white/80 shadow-soft text-center">
-              <p className="font-display italic text-xl leading-none text-foreground">
+          <div className="absolute inset-x-[18%] bottom-[18%] flex justify-center pointer-events-none">
+            <div className="min-h-10 max-w-full px-5 py-2 rounded-full bg-white/94 backdrop-blur-md border border-white shadow-[0_12px_32px_rgba(43,31,39,0.22),0_1px_0_rgba(255,255,255,0.95)_inset] text-center">
+              <p className="font-display italic text-xl leading-none text-[#241820] drop-shadow-[0_1px_0_rgba(255,255,255,0.85)] truncate">
                 {cleanName}
               </p>
             </div>
