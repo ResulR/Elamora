@@ -232,6 +232,18 @@ const updateProductActiveSchema = z.object({
   isActive: z.boolean(),
 });
 
+const shopSettingsPayloadSchema = z.object({
+  shopName: z.string().trim().min(1).max(160),
+  currency: z.literal("EUR"),
+  bankBeneficiary: z.string().trim().min(1).max(160),
+  bankName: z.string().trim().min(1).max(160),
+  bankIban: z.string().trim().min(1).max(80),
+  deliveryFeeCents: z.number().int().min(0).max(999999),
+  openingHours: z.string().trim().max(255).optional().default(""),
+  confirmationMessage: z.string().trim().min(1).max(1000),
+  ordersEnabled: z.boolean(),
+});
+
 
 function createConfirmationToken() {
   return crypto.randomBytes(32).toString("hex");
@@ -242,9 +254,11 @@ function hashConfirmationToken(token: string) {
 }
 
 app.get("/api/bank-transfer-info", async (_req: Request, res: Response) => {
+  const bankTransfer = await getBankTransferFromShopSettings();
+
   return res.json({
     ok: true,
-    bankTransfer: config.bankTransfer,
+    bankTransfer,
   });
 });
 
@@ -906,6 +920,137 @@ app.post("/api/admin/logout", (_req: Request, res: Response) => {
   return res.json({ ok: true });
 });
 
+
+function mapShopSettingsRow(row: any) {
+  return {
+    id: String(row.id),
+    shopName: row.shop_name,
+    currency: "EUR",
+    bankBeneficiary: row.bank_beneficiary ?? "",
+    bankName: row.bank_name ?? "",
+    bankIban: row.bank_iban ?? "",
+    deliveryFeeCents: Number(row.delivery_fee_cents ?? 0),
+    openingHours: row.opening_hours ?? "",
+    confirmationMessage: row.confirmation_message,
+    ordersEnabled: Boolean(row.orders_enabled),
+    createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+    updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : String(row.updated_at),
+  };
+}
+
+async function getOrCreateShopSettings() {
+  const existing = await pool.query(
+    `
+      SELECT *
+      FROM shop_settings
+      ORDER BY created_at ASC
+      LIMIT 1
+    `
+  );
+
+  if (existing.rows[0]) {
+    return existing.rows[0];
+  }
+
+  const created = await pool.query(
+    `
+      INSERT INTO shop_settings (
+        shop_name,
+        currency,
+        bank_beneficiary,
+        bank_name,
+        bank_iban,
+        delivery_fee_cents,
+        opening_hours,
+        confirmation_message,
+        orders_enabled
+      )
+      VALUES ('Elamora', 'EUR', 'Elamora', 'Elamora', '', 0, 'Mon–Sat 10:00–19:00', 'Thank you for your order!', true)
+      RETURNING *
+    `
+  );
+
+  return created.rows[0];
+}
+
+async function getBankTransferFromShopSettings() {
+  const settings = await getOrCreateShopSettings();
+
+  return {
+    configured: Boolean(settings.bank_beneficiary && settings.bank_name && settings.bank_iban),
+    beneficiary: settings.bank_beneficiary || config.bankTransfer.beneficiary,
+    bankName: settings.bank_name || config.bankTransfer.bankName,
+    iban: settings.bank_iban || config.bankTransfer.iban,
+    currency: "EUR",
+  };
+}
+
+app.get("/api/admin/settings", requireAdmin, async (_req: AdminRequest, res: Response) => {
+  const row = await getOrCreateShopSettings();
+
+  return res.json({
+    ok: true,
+    settings: mapShopSettingsRow(row),
+  });
+});
+
+app.put("/api/admin/settings", requireAdmin, async (req: AdminRequest, res: Response) => {
+  const parsed = shopSettingsPayloadSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    return res.status(400).json({
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid settings payload",
+    });
+  }
+
+  const current = await getOrCreateShopSettings();
+
+  const result = await pool.query(
+    `
+      UPDATE shop_settings
+      SET shop_name = $2,
+          currency = 'EUR',
+          bank_beneficiary = $3,
+          bank_name = $4,
+          bank_iban = $5,
+          delivery_fee_cents = $6,
+          opening_hours = $7,
+          confirmation_message = $8,
+          orders_enabled = $9,
+          updated_at = now()
+      WHERE id = $1
+      RETURNING *
+    `,
+    [
+      current.id,
+      parsed.data.shopName,
+      parsed.data.bankBeneficiary,
+      parsed.data.bankName,
+      parsed.data.bankIban,
+      parsed.data.deliveryFeeCents,
+      parsed.data.openingHours,
+      parsed.data.confirmationMessage,
+      parsed.data.ordersEnabled,
+    ]
+  );
+
+  const settings = mapShopSettingsRow(result.rows[0]);
+
+  await logAdminAction(req, {
+    action: "settings.update",
+    targetType: "shop_settings",
+    targetId: settings.id,
+    payload: {
+      settings,
+    },
+  });
+
+  return res.json({
+    ok: true,
+    settings,
+  });
+});
 
 app.get("/api/admin/catalog", requireAdmin, async (_req: AdminRequest, res: Response) => {
   try {
@@ -1917,7 +2062,7 @@ async function sendOrderAcknowledgmentEmailForOrder(orderId: string, confirmatio
     const result = await sendOrderAcknowledgmentEmail({
       to: order.customer_email,
       confirmationUrl,
-      bankTransfer: config.bankTransfer,
+      bankTransfer: await getBankTransferFromShopSettings(),
       order: mapOrderRow(order),
       items: itemsResult.rows.map(mapOrderItemRow),
     });
@@ -2026,7 +2171,7 @@ async function sendOrderRecapEmailForOrder(orderId: string, confirmationToken: s
     const result = await sendOrderAcknowledgmentEmail({
       to: order.customer_email,
       confirmationUrl,
-      bankTransfer: config.bankTransfer,
+      bankTransfer: await getBankTransferFromShopSettings(),
       order: mapOrderRow(order),
       items: itemsResult.rows.map(mapOrderItemRow),
     });
@@ -2317,7 +2462,7 @@ async function sendCustomerPaymentReminderEmailForOrder(orderId: string) {
 
     const result = await sendCustomerPaymentReminderEmail({
       to: order.customer_email,
-      bankTransfer: config.bankTransfer,
+      bankTransfer: await getBankTransferFromShopSettings(),
       order: mapOrderRow(order),
     });
 

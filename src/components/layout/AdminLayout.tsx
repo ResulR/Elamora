@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sheet";
 
 const mobileItems: Array<{
-  to: "/admin" | "/admin/orders" | "/admin/products";
+  to: "/admin" | "/admin/orders" | "/admin/products" | "/admin/settings";
   label: string;
   icon: typeof LayoutDashboard;
   exact?: boolean;
@@ -29,6 +29,7 @@ const mobileItems: Array<{
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/admin/orders", label: "Orders", icon: ShoppingBag },
   { to: "/admin/products", label: "Products", icon: Package },
+  { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 export function AdminLayout({ children, title }: { children: ReactNode; title: string }) {
