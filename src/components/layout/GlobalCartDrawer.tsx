@@ -80,6 +80,11 @@ export function GlobalCartDrawer() {
     setOpen(false);
   };
 
+  const handleExploreCreations = () => {
+    setOpen(false);
+    void navigate({ to: "/configure" });
+  };
+
   const total = getCartTotalCents(items);
   const count = getCartItemCount(items);
 
@@ -130,20 +135,29 @@ export function GlobalCartDrawer() {
             {/* Body */}
             <div className="flex-1 overflow-y-auto">
               {count === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full gap-4 px-6 py-10 text-center">
-                  <ShoppingBag className="h-12 w-12 text-primary/30" />
-                  <div>
-                    <p className="font-display text-lg text-foreground">Your cart is empty</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Choose a creation to get started.
-                    </p>
+                <div className="flex h-full flex-col items-center justify-center px-6 py-10 text-center">
+                  <div className="relative mb-5 flex h-24 w-24 items-center justify-center rounded-full bg-primary/10">
+                    <div className="absolute inset-3 rounded-full border border-primary/15 bg-background/70" />
+                    <ShoppingBag className="relative h-10 w-10 text-primary" />
+                    <span className="absolute -right-1 top-3 h-4 w-4 rounded-full bg-primary/20" />
+                    <span className="absolute bottom-4 left-2 h-2.5 w-2.5 rounded-full bg-primary/25" />
                   </div>
+
+                  <p className="font-display text-2xl text-foreground">Your cart is empty</p>
+                  <p className="mt-2 max-w-[260px] text-sm leading-6 text-muted-foreground">
+                    Start with a personalized Elamora creation, then review it here before checkout.
+                  </p>
+
                   <button
-                    onClick={handleContinue}
-                    className="mt-2 px-6 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+                    onClick={handleExploreCreations}
+                    className="mt-6 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-soft transition hover:opacity-90"
                   >
-                    Browse creations
+                    Explore creations
                   </button>
+
+                  <p className="mt-4 text-xs text-muted-foreground">
+                    You can still personalize the name, message and details before ordering.
+                  </p>
                 </div>
               ) : (
                 <div className="px-5 py-4 space-y-4">
