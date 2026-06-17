@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Check, Copy, Mail } from "lucide-react";
+import { Check, Copy, Mail, RefreshCw } from "lucide-react";
 import {
   getBankTransferInfo,
   getPublicOrder,
@@ -28,6 +28,7 @@ function ConfirmationPage() {
   const [confirmationAccess, setConfirmationAccess] = useState<{ reference: string; token: string } | null>(null);
   const [recapStatus, setRecapStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshingStatus, setIsRefreshingStatus] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -99,6 +100,27 @@ function ConfirmationPage() {
     }
   }
 
+  async function handleRefreshStatus() {
+    if (!confirmationAccess || isRefreshingStatus) {
+      return;
+    }
+
+    setIsRefreshingStatus(true);
+
+    try {
+      const loadedOrder = await getPublicOrder(confirmationAccess.reference, confirmationAccess.token);
+      setOrder(loadedOrder);
+    } finally {
+      setIsRefreshingStatus(false);
+    }
+  }
+
+  const statusDetails = getConfirmationStatusDetails(
+    order.status,
+    order.paymentStatus,
+    order.customer?.deliveryMethod
+  );
+
   return (
     <AppLayout>
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-20 text-center">
@@ -108,9 +130,36 @@ function ConfirmationPage() {
 
         <h1 className="font-display text-4xl mt-6">Thank you for your order</h1>
         <p className="mt-3 text-muted-foreground">
-          Your order has been saved. Please complete the bank transfer using the details below.
-          We will prepare your order after the payment is received and approved.
+          This private confirmation page is linked to your order and always reloads the latest status from our server.
         </p>
+
+        <div className="mt-6 rounded-2xl border border-border/70 bg-surface/80 px-5 py-4 text-left shadow-soft">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Current status</p>
+              <h2 className="font-display text-2xl mt-1">{statusDetails.title}</h2>
+              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                {statusDetails.description}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => void handleRefreshStatus()}
+              disabled={isRefreshingStatus}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <RefreshCw className={["h-4 w-4", isRefreshingStatus ? "animate-spin" : ""].join(" ")} />
+              {isRefreshingStatus ? "Refreshing..." : "Refresh status"}
+            </button>
+          </div>
+
+          <div className="mt-4 grid sm:grid-cols-3 gap-3 text-sm">
+            <Info label="Order status" value={formatOrderStatus(order.status)} />
+            <Info label="Payment" value={formatPaymentStatus(order.paymentStatus)} />
+            <Info label="Last updated" value={formatDate(order.updatedAt)} />
+          </div>
+        </div>
 
         <div className="mt-6 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4 text-left">
           <p className="text-sm font-medium">Save this page or check your email.</p>
@@ -136,10 +185,13 @@ function ConfirmationPage() {
 
         <div className="mt-8 bg-surface/80 border border-border/60 rounded-2xl p-6 shadow-soft text-left">
           <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5 mb-6">
-            <h2 className="font-display text-xl">Bank transfer instructions</h2>
+            <h2 className="font-display text-xl">
+              {order.paymentStatus === "paid" ? "Payment details" : "Bank transfer instructions"}
+            </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Please make a bank transfer for the exact total amount. Use your order number as
-              the payment reference so we can match your payment quickly.
+              {order.paymentStatus === "paid"
+                ? "Your payment has been approved. You can still keep these details for your records."
+                : "Please make a bank transfer for the exact total amount. Use your order number as the payment reference so we can match your payment quickly."}
             </p>
 
             <div className="mt-4 grid sm:grid-cols-2 gap-3">
@@ -152,14 +204,16 @@ function ConfirmationPage() {
             </div>
 
             <p className="mt-4 text-xs text-muted-foreground italic">
-              Your order will remain pending until the bank transfer is received and approved by our team.
-              You will receive a confirmation email after approval.
+              {order.paymentStatus === "paid"
+                ? "Your order is now moving through the preparation and delivery workflow."
+                : "Your order will remain pending until the bank transfer is received and approved by our team. You will receive a confirmation email after approval."}
             </p>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
             <Info label="Order number" value={order.reference} />
             <Info label="Status" value={formatOrderStatus(order.status)} />
+            <Info label="Payment" value={formatPaymentStatus(order.paymentStatus)} />
             <Info label="Created at" value={formatDate(order.createdAt)} />
             <Info label="Total" value={formatPrice(order.totalCents)} />
           </div>
@@ -250,9 +304,96 @@ function BankInfo({
 }
 
 function formatOrderStatus(status: string) {
-  if (status === "pending_bank_transfer") {
-    return "Awaiting bank transfer";
+  const labels: Record<string, string> = {
+    pending_bank_transfer: "Awaiting bank transfer",
+    confirmed: "Payment confirmed",
+    preparing: "Preparing",
+    ready_for_pickup: "Ready for pickup",
+    shipped: "Shipped",
+    completed: "Completed",
+    cancelled: "Cancelled",
+  };
+
+  return labels[status] ?? status.replaceAll("_", " ");
+}
+
+function formatPaymentStatus(status?: string) {
+  const labels: Record<string, string> = {
+    pending: "Pending",
+    paid: "Paid",
+    cancelled: "Cancelled",
+    refunded: "Refunded",
+  };
+
+  return labels[status ?? "pending"] ?? String(status ?? "pending").replaceAll("_", " ");
+}
+
+function getConfirmationStatusDetails(
+  status: string,
+  paymentStatus?: string,
+  deliveryMethod?: string
+) {
+  if (status === "pending_bank_transfer" || paymentStatus === "pending") {
+    return {
+      title: "Awaiting bank transfer",
+      description:
+        "We have received your order. Please complete the bank transfer using the payment reference shown below.",
+    };
   }
 
-  return status.replaceAll("_", " ");
+  if (status === "confirmed" || paymentStatus === "paid") {
+    return {
+      title: "Payment confirmed",
+      description:
+        "Your payment has been approved. Our team will now prepare your personalized gift.",
+    };
+  }
+
+  if (status === "preparing") {
+    return {
+      title: "Preparing your gift",
+      description:
+        "Your personalized gift is currently being prepared by our team.",
+    };
+  }
+
+  if (status === "ready_for_pickup") {
+    return {
+      title: "Ready for pickup",
+      description:
+        "Your order is ready for pickup. Please bring your order reference with you.",
+    };
+  }
+
+  if (status === "shipped") {
+    return {
+      title: deliveryMethod === "pickup" ? "Ready for pickup" : "Shipped",
+      description:
+        deliveryMethod === "pickup"
+          ? "Your order is ready for pickup. Please bring your order reference with you."
+          : "Your order has been shipped. We will contact you if any delivery detail needs confirmation.",
+    };
+  }
+
+  if (status === "completed") {
+    return {
+      title: "Order completed",
+      description:
+        "This order has been completed. Thank you for choosing Elamora.",
+    };
+  }
+
+  if (status === "cancelled") {
+    return {
+      title: "Order cancelled",
+      description:
+        "This order has been cancelled. Contact us if you think this is a mistake.",
+    };
+  }
+
+  return {
+    title: formatOrderStatus(status),
+    description:
+      "This page shows the latest status available for your order.",
+  };
 }
