@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ShippingPicker, type ShippingFormState } from "@/components/checkout/ShippingPicker";
 import { SectionTitle } from "@/components/ui-kit/SectionTitle";
@@ -193,19 +195,20 @@ function CheckoutPage() {
       window.location.href = `/confirmation?reference=${encodeURIComponent(order.reference)}&token=${encodeURIComponent(order.confirmationToken)}`;
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
+      let nextError = "Could not place your order. Please try again.";
 
       if (message === "zone_unavailable") {
-        setSubmitError("This delivery area is not covered yet.");
+        nextError = "This delivery area is not covered yet.";
       } else if (message === "missing_shipping_address") {
-        setSubmitError("Please complete your delivery address.");
+        nextError = "Please complete your delivery address.";
       } else if (message === "missing_delivery_date") {
-        setSubmitError("Please choose a delivery date.");
+        nextError = "Please choose a delivery date.";
       } else if (message === "delivery_date_unavailable") {
-        setSubmitError("This delivery date is not available. Please choose another date.");
-      } else {
-        setSubmitError("Could not place your order. Please try again.");
+        nextError = "This delivery date is not available. Please choose another date.";
       }
 
+      setSubmitError(nextError);
+      toast.error(nextError);
       setIsSubmitting(false);
     }
   };
@@ -435,8 +438,10 @@ function CheckoutPage() {
                   <button
                     type="submit"
                     disabled={isSubmitting || !hasValidItem || !isDeliveryReady || !termsAccepted}
-                    className="px-7 py-3 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity shadow-soft disabled:opacity-45 disabled:cursor-not-allowed"
+                    className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity shadow-soft disabled:opacity-45 disabled:cursor-not-allowed"
+                    aria-busy={isSubmitting}
                   >
+                    {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
                     {isSubmitting ? "Saving order..." : "Confirm order ✦"}
                   </button>
                 </div>
