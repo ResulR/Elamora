@@ -244,6 +244,32 @@ const shopSettingsPayloadSchema = z.object({
   ordersEnabled: z.boolean(),
 });
 
+const deliveryZonePayloadSchema = z.object({
+  name: z.string().trim().min(1).max(160),
+  countryCode: z.string().trim().min(2).max(2).transform((value) => value.toUpperCase()),
+  postalPattern: z.string().trim().min(1).max(80),
+  priceCents: z.number().int().min(0).max(999999),
+  leadTimeDays: z.number().int().min(0).max(365),
+  isActive: z.boolean(),
+});
+
+const deliveryBlackoutPayloadSchema = z.object({
+  blackoutDate: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid blackout date"),
+  countryCode: z.string().trim().max(2).transform((value) => value ? value.toUpperCase() : ""),
+  reason: z.string().trim().max(255).optional().default(""),
+  isActive: z.boolean(),
+});
+
+const deliveryTimeSlotPayloadSchema = z.object({
+  name: z.string().trim().max(160).optional().default(""),
+  dayOfWeek: z.number().int().min(0).max(6),
+  startTime: z.string().trim().regex(/^\d{2}:\d{2}$/, "Invalid start time"),
+  endTime: z.string().trim().regex(/^\d{2}:\d{2}$/, "Invalid end time"),
+  countryCode: z.string().trim().max(2).transform((value) => value ? value.toUpperCase() : ""),
+  isActive: z.boolean(),
+  sortOrder: z.number().int().min(0).max(9999),
+});
+
 
 function createConfirmationToken() {
   return crypto.randomBytes(32).toString("hex");
@@ -1050,6 +1076,301 @@ app.put("/api/admin/settings", requireAdmin, async (req: AdminRequest, res: Resp
     ok: true,
     settings,
   });
+});
+
+function mapDeliveryZoneRow(row: any) {
+  return {
+    id: String(row.id),
+    name: row.name,
+    countryCode: row.country_code,
+    postalPattern: row.postal_pattern,
+    priceCents: Number(row.price_cents ?? 0),
+    leadTimeDays: Number(row.lead_time_days ?? 0),
+    isActive: Boolean(row.is_active),
+    createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+    updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : String(row.updated_at),
+  };
+}
+
+function mapDeliveryBlackoutRow(row: any) {
+  return {
+    id: String(row.id),
+    blackoutDate: row.blackout_date instanceof Date
+      ? row.blackout_date.toISOString().slice(0, 10)
+      : String(row.blackout_date).slice(0, 10),
+    countryCode: row.country_code ?? "",
+    reason: row.reason ?? "",
+    isActive: Boolean(row.is_active),
+    createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+    updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : String(row.updated_at),
+  };
+}
+
+function mapDeliveryTimeSlotRow(row: any) {
+  return {
+    id: String(row.id),
+    name: row.name,
+    dayOfWeek: Number(row.day_of_week),
+    startTime: String(row.start_time),
+    endTime: String(row.end_time),
+    countryCode: row.country_code ?? "",
+    isActive: Boolean(row.is_active),
+    sortOrder: Number(row.sort_order ?? 0),
+    createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+    updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : String(row.updated_at),
+  };
+}
+
+async function loadAdminDelivery() {
+  const [zones, blackoutDates, timeSlots] = await Promise.all([
+    pool.query(`
+      SELECT *
+      FROM delivery_zones
+      ORDER BY country_code ASC, postal_pattern ASC, name ASC
+    `),
+    pool.query(`
+      SELECT *
+      FROM delivery_blackout_dates
+      ORDER BY blackout_date DESC, country_code NULLS FIRST
+    `),
+    pool.query(`
+      SELECT *
+      FROM delivery_time_slots
+      ORDER BY day_of_week ASC, sort_order ASC, start_time ASC
+    `),
+  ]);
+
+  return {
+    zones: zones.rows.map(mapDeliveryZoneRow),
+    blackoutDates: blackoutDates.rows.map(mapDeliveryBlackoutRow),
+    timeSlots: timeSlots.rows.map(mapDeliveryTimeSlotRow),
+  };
+}
+
+app.get("/api/admin/delivery", requireAdmin, async (_req: AdminRequest, res: Response) => {
+  return res.json({
+    ok: true,
+    delivery: await loadAdminDelivery(),
+  });
+});
+
+app.post("/api/admin/delivery/zones", requireAdmin, async (req: AdminRequest, res: Response) => {
+  const parsed = deliveryZonePayloadSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ ok: false, error: parsed.error.issues[0]?.message ?? "Invalid delivery zone" });
+
+  const result = await pool.query(
+    `
+      INSERT INTO delivery_zones (name, country_code, postal_pattern, price_cents, lead_time_days, is_active)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `,
+    [parsed.data.name, parsed.data.countryCode, parsed.data.postalPattern, parsed.data.priceCents, parsed.data.leadTimeDays, parsed.data.isActive]
+  );
+
+  const zone = mapDeliveryZoneRow(result.rows[0]);
+
+  await logAdminAction(req, {
+    action: "delivery_zone.create",
+    targetType: "delivery_zone",
+    targetId: zone.id,
+    payload: { zone },
+  });
+
+  return res.status(201).json({ ok: true, zone });
+});
+
+app.put("/api/admin/delivery/zones/:id", requireAdmin, async (req: AdminRequest, res: Response) => {
+  const parsed = deliveryZonePayloadSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ ok: false, error: parsed.error.issues[0]?.message ?? "Invalid delivery zone" });
+
+  const result = await pool.query(
+    `
+      UPDATE delivery_zones
+      SET name = $2,
+          country_code = $3,
+          postal_pattern = $4,
+          price_cents = $5,
+          lead_time_days = $6,
+          is_active = $7,
+          updated_at = now()
+      WHERE id = $1
+      RETURNING *
+    `,
+    [req.params.id, parsed.data.name, parsed.data.countryCode, parsed.data.postalPattern, parsed.data.priceCents, parsed.data.leadTimeDays, parsed.data.isActive]
+  );
+
+  if (!result.rows[0]) return res.status(404).json({ ok: false, error: "Delivery zone not found" });
+
+  const zone = mapDeliveryZoneRow(result.rows[0]);
+
+  await logAdminAction(req, {
+    action: "delivery_zone.update",
+    targetType: "delivery_zone",
+    targetId: zone.id,
+    payload: { zone },
+  });
+
+  return res.json({ ok: true, zone });
+});
+
+app.delete("/api/admin/delivery/zones/:id", requireAdmin, async (req: AdminRequest, res: Response) => {
+  const result = await pool.query("DELETE FROM delivery_zones WHERE id = $1 RETURNING id", [req.params.id]);
+  if (!result.rows[0]) return res.status(404).json({ ok: false, error: "Delivery zone not found" });
+
+  await logAdminAction(req, {
+    action: "delivery_zone.delete",
+    targetType: "delivery_zone",
+    targetId: String(req.params.id),
+  });
+
+  return res.json({ ok: true });
+});
+
+app.post("/api/admin/delivery/blackout-dates", requireAdmin, async (req: AdminRequest, res: Response) => {
+  const parsed = deliveryBlackoutPayloadSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ ok: false, error: parsed.error.issues[0]?.message ?? "Invalid blackout date" });
+
+  const result = await pool.query(
+    `
+      INSERT INTO delivery_blackout_dates (blackout_date, country_code, reason, is_active)
+      VALUES ($1::date, NULLIF($2, ''), $3, $4)
+      RETURNING *
+    `,
+    [parsed.data.blackoutDate, parsed.data.countryCode, parsed.data.reason, parsed.data.isActive]
+  );
+
+  const blackoutDate = mapDeliveryBlackoutRow(result.rows[0]);
+
+  await logAdminAction(req, {
+    action: "delivery_blackout.create",
+    targetType: "delivery_blackout",
+    targetId: blackoutDate.id,
+    payload: { blackoutDate },
+  });
+
+  return res.status(201).json({ ok: true, blackoutDate });
+});
+
+app.put("/api/admin/delivery/blackout-dates/:id", requireAdmin, async (req: AdminRequest, res: Response) => {
+  const parsed = deliveryBlackoutPayloadSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ ok: false, error: parsed.error.issues[0]?.message ?? "Invalid blackout date" });
+
+  const result = await pool.query(
+    `
+      UPDATE delivery_blackout_dates
+      SET blackout_date = $2::date,
+          country_code = NULLIF($3, ''),
+          reason = $4,
+          is_active = $5,
+          updated_at = now()
+      WHERE id = $1
+      RETURNING *
+    `,
+    [req.params.id, parsed.data.blackoutDate, parsed.data.countryCode, parsed.data.reason, parsed.data.isActive]
+  );
+
+  if (!result.rows[0]) return res.status(404).json({ ok: false, error: "Blackout date not found" });
+
+  const blackoutDate = mapDeliveryBlackoutRow(result.rows[0]);
+
+  await logAdminAction(req, {
+    action: "delivery_blackout.update",
+    targetType: "delivery_blackout",
+    targetId: blackoutDate.id,
+    payload: { blackoutDate },
+  });
+
+  return res.json({ ok: true, blackoutDate });
+});
+
+app.delete("/api/admin/delivery/blackout-dates/:id", requireAdmin, async (req: AdminRequest, res: Response) => {
+  const result = await pool.query("DELETE FROM delivery_blackout_dates WHERE id = $1 RETURNING id", [req.params.id]);
+  if (!result.rows[0]) return res.status(404).json({ ok: false, error: "Blackout date not found" });
+
+  await logAdminAction(req, {
+    action: "delivery_blackout.delete",
+    targetType: "delivery_blackout",
+    targetId: String(req.params.id),
+  });
+
+  return res.json({ ok: true });
+});
+
+app.post("/api/admin/delivery/time-slots", requireAdmin, async (req: AdminRequest, res: Response) => {
+  const parsed = deliveryTimeSlotPayloadSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ ok: false, error: parsed.error.issues[0]?.message ?? "Invalid time slot" });
+
+  const slotName = parsed.data.name || `${parsed.data.startTime}-${parsed.data.endTime}`;
+
+  const result = await pool.query(
+    `
+      INSERT INTO delivery_time_slots (name, day_of_week, start_time, end_time, country_code, is_active, sort_order)
+      VALUES ($1, $2, $3::time, $4::time, NULLIF($5, ''), $6, $7)
+      RETURNING *
+    `,
+    [slotName, parsed.data.dayOfWeek, parsed.data.startTime, parsed.data.endTime, parsed.data.countryCode, parsed.data.isActive, parsed.data.sortOrder]
+  );
+
+  const timeSlot = mapDeliveryTimeSlotRow(result.rows[0]);
+
+  await logAdminAction(req, {
+    action: "delivery_time_slot.create",
+    targetType: "delivery_time_slot",
+    targetId: timeSlot.id,
+    payload: { timeSlot },
+  });
+
+  return res.status(201).json({ ok: true, timeSlot });
+});
+
+app.put("/api/admin/delivery/time-slots/:id", requireAdmin, async (req: AdminRequest, res: Response) => {
+  const parsed = deliveryTimeSlotPayloadSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ ok: false, error: parsed.error.issues[0]?.message ?? "Invalid time slot" });
+
+  const slotName = parsed.data.name || `${parsed.data.startTime}-${parsed.data.endTime}`;
+
+  const result = await pool.query(
+    `
+      UPDATE delivery_time_slots
+      SET name = $2,
+          day_of_week = $3,
+          start_time = $4::time,
+          end_time = $5::time,
+          country_code = NULLIF($6, ''),
+          is_active = $7,
+          sort_order = $8,
+          updated_at = now()
+      WHERE id = $1
+      RETURNING *
+    `,
+    [req.params.id, slotName, parsed.data.dayOfWeek, parsed.data.startTime, parsed.data.endTime, parsed.data.countryCode, parsed.data.isActive, parsed.data.sortOrder]
+  );
+
+  if (!result.rows[0]) return res.status(404).json({ ok: false, error: "Time slot not found" });
+
+  const timeSlot = mapDeliveryTimeSlotRow(result.rows[0]);
+
+  await logAdminAction(req, {
+    action: "delivery_time_slot.update",
+    targetType: "delivery_time_slot",
+    targetId: timeSlot.id,
+    payload: { timeSlot },
+  });
+
+  return res.json({ ok: true, timeSlot });
+});
+
+app.delete("/api/admin/delivery/time-slots/:id", requireAdmin, async (req: AdminRequest, res: Response) => {
+  const result = await pool.query("DELETE FROM delivery_time_slots WHERE id = $1 RETURNING id", [req.params.id]);
+  if (!result.rows[0]) return res.status(404).json({ ok: false, error: "Time slot not found" });
+
+  await logAdminAction(req, {
+    action: "delivery_time_slot.delete",
+    targetType: "delivery_time_slot",
+    targetId: String(req.params.id),
+  });
+
+  return res.json({ ok: true });
 });
 
 app.get("/api/admin/catalog", requireAdmin, async (_req: AdminRequest, res: Response) => {

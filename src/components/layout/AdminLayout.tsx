@@ -7,6 +7,7 @@ import {
   LogOut,
   Menu,
   Package,
+  Truck,
   Settings,
   ShoppingBag,
 } from "lucide-react";
@@ -21,7 +22,7 @@ import {
 } from "@/components/ui/sheet";
 
 const mobileItems: Array<{
-  to: "/admin" | "/admin/orders" | "/admin/products" | "/admin/settings";
+  to: "/admin" | "/admin/orders" | "/admin/products" | "/admin/delivery" | "/admin/settings";
   label: string;
   icon: typeof LayoutDashboard;
   exact?: boolean;
@@ -29,6 +30,7 @@ const mobileItems: Array<{
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/admin/orders", label: "Orders", icon: ShoppingBag },
   { to: "/admin/products", label: "Products", icon: Package },
+  { to: "/admin/delivery", label: "Delivery", icon: Truck },
   { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
