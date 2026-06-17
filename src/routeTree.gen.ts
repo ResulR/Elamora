@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ContactRouteImport } from './routes/contact'
 import { Route as ConfirmationRouteImport } from './routes/confirmation'
 import { Route as ConfigureRouteImport } from './routes/configure'
 import { Route as CheckoutRouteImport } from './routes/checkout'
@@ -29,6 +30,11 @@ import { Route as AdminOrdersIdRouteImport } from './routes/admin.orders.$id'
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConfirmationRoute = ConfirmationRouteImport.update({
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/checkout': typeof CheckoutRoute
   '/configure': typeof ConfigureRoute
   '/confirmation': typeof ConfirmationRoute
+  '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/checkout': typeof CheckoutRoute
   '/configure': typeof ConfigureRoute
   '/confirmation': typeof ConfirmationRoute
+  '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/checkout': typeof CheckoutRoute
   '/configure': typeof ConfigureRoute
   '/confirmation': typeof ConfirmationRoute
+  '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | '/checkout'
     | '/configure'
     | '/confirmation'
+    | '/contact'
     | '/login'
     | '/admin/products'
     | '/admin/settings'
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/checkout'
     | '/configure'
     | '/confirmation'
+    | '/contact'
     | '/login'
     | '/admin/products'
     | '/admin/settings'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/checkout'
     | '/configure'
     | '/confirmation'
+    | '/contact'
     | '/login'
     | '/admin/products'
     | '/admin/settings'
@@ -224,6 +236,7 @@ export interface RootRouteChildren {
   CheckoutRoute: typeof CheckoutRoute
   ConfigureRoute: typeof ConfigureRoute
   ConfirmationRoute: typeof ConfirmationRoute
+  ContactRoute: typeof ContactRoute
   LoginRoute: typeof LoginRoute
   AdminProductsRoute: typeof AdminProductsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
@@ -245,6 +258,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/confirmation': {
@@ -360,6 +380,7 @@ const rootRouteChildren: RootRouteChildren = {
   CheckoutRoute: CheckoutRoute,
   ConfigureRoute: ConfigureRoute,
   ConfirmationRoute: ConfirmationRoute,
+  ContactRoute: ContactRoute,
   LoginRoute: LoginRoute,
   AdminProductsRoute: AdminProductsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
