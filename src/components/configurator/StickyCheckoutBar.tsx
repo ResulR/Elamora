@@ -69,7 +69,7 @@ export function StickyCheckoutBar() {
   // ── Custom request mode ──────────────────────────────────────────────────────
   if (configMode === "custom") {
     return (
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-30 border-t border-border bg-background/95 backdrop-blur-md px-4 py-3 flex items-center justify-between gap-3 shadow-elevated">
+      <div className="lg:hidden fixed bottom-0 inset-x-0 z-30 border-t border-border bg-background/95 backdrop-blur-md px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex items-center justify-between gap-3 shadow-elevated">
         <CartBadge />
         {cartCount === 0 && (
           <div>
@@ -113,7 +113,7 @@ export function StickyCheckoutBar() {
     };
 
     return (
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-30 border-t border-border bg-background/95 backdrop-blur-md px-4 py-3 flex items-center justify-between gap-3 shadow-elevated">
+      <div className="lg:hidden fixed bottom-0 inset-x-0 z-30 border-t border-border bg-background/95 backdrop-blur-md px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex items-center justify-between gap-3 shadow-elevated">
         <CartBadge />
         {cartCount === 0 && (
           <div>
@@ -148,7 +148,7 @@ export function StickyCheckoutBar() {
   };
 
   return (
-    <div className="lg:hidden fixed bottom-0 inset-x-0 z-30 border-t border-border bg-background/95 backdrop-blur-md px-4 py-3 flex items-center justify-between gap-3 shadow-elevated">
+    <div className="lg:hidden fixed bottom-0 inset-x-0 z-30 border-t border-border bg-background/95 backdrop-blur-md px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex items-center justify-between gap-3 shadow-elevated">
       <CartBadge />
       {cartCount === 0 && (
         <div>

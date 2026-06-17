@@ -65,7 +65,7 @@ export function BucketPreview() {
       <div className="relative aspect-[3/4] overflow-hidden">
         <img
           src="/designs/classic-romantic-bucket.png"
-          alt="Elamora creation"
+          alt="Personalized Elamora gift preview"
           className="w-full h-full object-contain opacity-30"
         />
         {/* Overlay content */}

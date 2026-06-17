@@ -5,15 +5,15 @@ const INTRO_KEY = 'elamora_intro_seen_rose_gold_v1'
 // Pink rose gold boutique intro video — blush envelope opening animation.
 const VIDEO_SRC = '/intro/rose-intro-elamora.mp4'
 
-// ─── Timestamps vidéo (secondes) ────────────────────────────────────────────
+// ─── Video timestamps in seconds ────────────────────────────────────────────
 const HOME_REVEAL_START_TIME = 4    // homepage commence à apparaître dans la zone enveloppe
 const VIDEO_PAUSE_TIME       = 4.5  // vidéo se met en pause sur ce frame (enveloppe ouverte)
 
-// ─── Animation homepage ──────────────────────────────────────────────────────
+// ─── Homepage animation ──────────────────────────────────────────────────────
 const HOME_INITIAL_SCALE   = 0.92  // scale initial (homepage "posée" à l'intérieur)
 const HOME_EXPAND_DURATION = 1.8   // secondes pour l'expansion clip + scale
 
-// ─── Zone centrale de l'enveloppe ouverte ────────────────────────────────────
+// ─── Central area of the opened envelope ────────────────────────────────────
 // clip-path: inset(top% side% bottom% side% round radius)
 // Ajuste ces valeurs après test visuel — c'est l'objectif principal des constantes
 const ENV_INSET_TOP    = 20   // % depuis le haut de l'écran
@@ -21,11 +21,11 @@ const ENV_INSET_BOTTOM = 16   // % depuis le bas de l'écran
 const ENV_INSET_SIDE   = 10   // % depuis chaque côté
 const ENV_RADIUS       = 14   // px — arrondi des coins du masque
 
-// Clip-paths pré-calculés
+// Precomputed clip paths
 const CLIP_ENV  = `inset(${ENV_INSET_TOP}% ${ENV_INSET_SIDE}% ${ENV_INSET_BOTTOM}% ${ENV_INSET_SIDE}% round ${ENV_RADIUS}px)`
 const CLIP_FULL = 'inset(0% 0% 0% 0% round 0px)'
 
-// Easing pour l'expansion (cubic-bezier élégant)
+// Expansion easing
 const EXPAND_EASE = [0.33, 1, 0.68, 1] as const
 
 type Phase = 'playing' | 'revealInsideEnvelope' | 'expandingHome' | 'done'
@@ -41,18 +41,18 @@ export function IntroEnvelope({ children }: { children: React.ReactNode }) {
   const phaseRef   = useRef<Phase>('playing')
   const prefersReduced = useReducedMotion()
 
-  // ── Montage ──────────────────────────────────────────────────────────────────
+  // ── Mount ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     const mobile = window.innerWidth < 768
     const admin  = window.location.pathname.startsWith('/admin')
     let seen = false
     try { seen = !!localStorage.getItem(INTRO_KEY) } catch {}
-    const needs = mobile && !seen && !admin
+    const needs = mobile && !seen && !admin && !prefersReduced
     setShowIntro(needs)
     setMounted(true)
     if (needs) document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = '' }
-  }, [])
+  }, [prefersReduced])
 
   // ── complete : marque vu, passe à done ───────────────────────────────────────
   const complete = useCallback(() => {
@@ -63,7 +63,7 @@ export function IntroEnvelope({ children }: { children: React.ReactNode }) {
     setPhase('done')
   }, [])
 
-  // ── Gestion des timestamps vidéo ─────────────────────────────────────────────
+  // ── Video timestamp handling ─────────────────────────────────────────────
   const handleTimeUpdate = useCallback(() => {
     const video = videoRef.current
     if (!video) return
@@ -185,7 +185,7 @@ export function IntroEnvelope({ children }: { children: React.ReactNode }) {
             onClick={complete}
             onTouchEnd={(e) => { e.preventDefault(); complete() }}
           >
-            {/* ── Vidéo ── autoPlay, muted, playsInline ── */}
+            {/* ── Video ── autoPlay, muted, playsInline ── */}
             <video
               ref={videoRef}
               src={VIDEO_SRC}
@@ -203,7 +203,7 @@ export function IntroEnvelope({ children }: { children: React.ReactNode }) {
               }}
             />
 
-            {/* ── Bouton Passer ── stopPropagation pour éviter le double appel ── */}
+            {/* ── Skip button ── stopPropagation pour éviter le double appel ── */}
             <motion.button
               style={{
                 position:             'absolute',
@@ -226,7 +226,7 @@ export function IntroEnvelope({ children }: { children: React.ReactNode }) {
               }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 1.5, duration: 0.5 }}
+              transition={{ delay: 1, duration: 0.4 }}
               onClick={(e) => { e.stopPropagation(); complete() }}
             >
               Passer
