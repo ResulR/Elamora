@@ -25,6 +25,7 @@ import { logAdminAction, redactSensitiveData } from "./admin-audit.js";
 import { logger, logError } from "./logger.js";
 import { requireAdmin, type AdminRequest } from "./middleware/require-admin.js";
 import { requireSameOrigin } from "./middleware/require-same-origin.js";
+import { errorHandler } from "./middleware/error-handler.js";
 
 const app = express();
 
@@ -3389,6 +3390,8 @@ async function sendPaymentConfirmedEmailForOrder(orderId: string) {
 app.use((_req: Request, res: Response) => {
   return res.status(404).json({ ok: false, error: "Not found" });
 });
+
+app.use(errorHandler);
 
 app.listen(config.port, "127.0.0.1", () => {
   logger.info({ port: config.port }, "elamora_api_listening");
