@@ -21,32 +21,125 @@ export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
+type ResponsiveImageAsset = {
+  fallback: string;
+  webpSrcSet: string;
+  width: number;
+  height: number;
+};
+
+const RESPONSIVE_IMAGES = {
+  hero: {
+    fallback: "/hero/hero-elamora.jpg",
+    webpSrcSet:
+      "/hero/hero-elamora-768.webp 768w, " +
+      "/hero/hero-elamora-1200.webp 1200w, " +
+      "/hero/hero-elamora-1920.webp 1920w",
+    width: 1920,
+    height: 1288,
+  },
+  bubbleBalloonPink: {
+    fallback: "/creations/bubble-balloon-pink.jpg",
+    webpSrcSet:
+      "/creations/bubble-balloon-pink-480.webp 480w, " +
+      "/creations/bubble-balloon-pink-800.webp 800w, " +
+      "/creations/bubble-balloon-pink-1206.webp 1206w",
+    width: 1206,
+    height: 1403,
+  },
+  babyElephantPink: {
+    fallback: "/creations/baby-elephant-pink.jpg",
+    webpSrcSet:
+      "/creations/baby-elephant-pink-480.webp 480w, " +
+      "/creations/baby-elephant-pink-800.webp 800w, " +
+      "/creations/baby-elephant-pink-1206.webp 1206w",
+    width: 1206,
+    height: 1606,
+  },
+  coupleGlasses: {
+    fallback: "/creations/couple-glasses.jpg",
+    webpSrcSet:
+      "/creations/couple-glasses-480.webp 480w, " +
+      "/creations/couple-glasses-800.webp 800w, " +
+      "/creations/couple-glasses-1206.webp 1206w",
+    width: 1206,
+    height: 1602,
+  },
+  babyShowerPink: {
+    fallback: "/creations/baby-shower-pink.jpg",
+    webpSrcSet:
+      "/creations/baby-shower-pink-480.webp 480w, " +
+      "/creations/baby-shower-pink-800.webp 800w, " +
+      "/creations/baby-shower-pink-1045.webp 1045w",
+    width: 1045,
+    height: 1969,
+  },
+} satisfies Record<string, ResponsiveImageAsset>;
+
+function ResponsiveImage({
+  asset,
+  alt,
+  sizes,
+  className,
+  pictureClassName = "block h-full w-full",
+  loading = "lazy",
+  fetchPriority,
+}: {
+  asset: ResponsiveImageAsset;
+  alt: string;
+  sizes: string;
+  className: string;
+  pictureClassName?: string;
+  loading?: "eager" | "lazy";
+  fetchPriority?: "high" | "low" | "auto";
+}) {
+  return (
+    <picture className={pictureClassName}>
+      <source
+        type="image/webp"
+        srcSet={asset.webpSrcSet}
+        sizes={sizes}
+      />
+      <img
+        src={asset.fallback}
+        alt={alt}
+        width={asset.width}
+        height={asset.height}
+        loading={loading}
+        decoding="async"
+        fetchPriority={fetchPriority}
+        className={className}
+      />
+    </picture>
+  );
+}
+
 const categories = [
   {
     label: "Birthdays",
     sub: "Flowers",
-    img: "/creations/bubble-balloon-pink.jpg",
+    image: RESPONSIVE_IMAGES.bubbleBalloonPink,
     bg: "bg-primary-soft/40",
     offset: "",
   },
   {
     label: "Baby Shower",
     sub: "Newborn gifts",
-    img: "/creations/baby-elephant-pink.jpg",
+    image: RESPONSIVE_IMAGES.babyElephantPink,
     bg: "bg-muted/70",
     offset: "md:pt-12",
   },
   {
     label: "Wedding & Couple",
     sub: "Personalized glasses",
-    img: "/creations/couple-glasses.jpg",
+    image: RESPONSIVE_IMAGES.coupleGlasses,
     bg: "bg-primary-soft/30",
     offset: "",
   },
   {
     label: "Gift Boxes",
     sub: "Handcrafted sets",
-    img: "/creations/baby-shower-pink.jpg",
+    image: RESPONSIVE_IMAGES.babyShowerPink,
     bg: "bg-muted/70",
     offset: "md:pt-12",
   },
@@ -58,21 +151,21 @@ const products = [
     tag: "Personalizable",
     price: "from €65.00",
     badge: "Best Seller",
-    img: "/creations/baby-shower-pink.jpg",
+    image: RESPONSIVE_IMAGES.babyShowerPink,
   },
   {
     name: "Personalized Crystal Glasses",
     tag: "Hand-finished details",
     price: "from €45.00",
     badge: "New",
-    img: "/creations/couple-glasses.jpg",
+    image: RESPONSIVE_IMAGES.coupleGlasses,
   },
   {
     name: "Plush & Bubble Balloon Duo",
     tag: "Name included",
     price: "from €85.00",
     badge: null,
-    img: "/creations/baby-elephant-pink.jpg",
+    image: RESPONSIVE_IMAGES.babyElephantPink,
   },
 ] as const;
 
@@ -82,15 +175,14 @@ function HomePage() {
       <div className="bg-background text-foreground">
         {/* HERO */}
         <section className="relative min-h-[85vh] flex items-center overflow-hidden">
-          <img
-            src="/hero/hero-elamora.webp"
+          <ResponsiveImage
+            asset={RESPONSIVE_IMAGES.hero}
             alt="Premium personalized Elamora gift composition with bubble balloon, pastel flowers, satin ribbons and plush"
-            className="absolute inset-0 w-full h-full object-cover object-right md:object-center"
-            width={1600}
-            height={1073}
+            sizes="100vw"
             loading="eager"
             fetchPriority="high"
-            decoding="async"
+            pictureClassName="absolute inset-0 block h-full w-full"
+            className="h-full w-full object-cover object-right md:object-center"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/58 to-background/10" />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
@@ -158,19 +250,18 @@ function HomePage() {
               <Link
                 to="/configure"
                 key={category.label}
-                className={`group cursor-pointer ${category.offset}`}
+                className={`group cursor-pointer transition-transform duration-300 ease-out hover:-translate-y-1 ${category.offset}`}
               >
                 <div
-                  className={`aspect-[3/4] rounded-full overflow-hidden mb-6 border border-primary/10 ${category.bg}`}
+                  className={`relative aspect-[3/4] rounded-full overflow-hidden mb-6 border border-primary/10 transition-shadow duration-300 group-hover:shadow-elevated ${category.bg}`}
                 >
-                  <img
-                    src={category.img}
+                  <ResponsiveImage
+                    asset={category.image}
                     alt={category.label}
-                    loading="lazy"
-                    width={800}
-                    height={1024}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                    sizes="(min-width: 768px) 25vw, 50vw"
+                    className="h-full w-full object-cover"
                   />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-primary/10 via-transparent to-white/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                 </div>
 
                 <p className="text-center text-[12px] uppercase tracking-[0.2em] font-medium">
@@ -189,13 +280,11 @@ function HomePage() {
           <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-16 md:gap-20 items-center">
             <div className="relative">
               <div className="aspect-square bg-background rounded-3xl overflow-hidden">
-                <img
-                  src="/creations/bubble-balloon-pink.jpg"
+                <ResponsiveImage
+                  asset={RESPONSIVE_IMAGES.bubbleBalloonPink}
                   alt="Personalized bubble balloon with name and delicate details"
-                  loading="lazy"
-                  width={1024}
-                  height={1024}
-                  className="w-full h-full object-cover"
+                  sizes="(min-width: 768px) 50vw, 100vw"
+                  className="h-full w-full object-cover"
                 />
               </div>
 
@@ -299,16 +388,15 @@ function HomePage() {
 
           <div className="grid md:grid-cols-3 gap-8 md:gap-12">
             {products.map((product) => (
-              <Link to="/configure" key={product.name} className="group flex flex-col">
-                <div className="relative aspect-[4/5] bg-primary-soft/40 rounded-2xl overflow-hidden mb-6">
-                  <img
-                    src={product.img}
+              <Link to="/configure" key={product.name} className="group flex flex-col transition-transform duration-300 ease-out hover:-translate-y-1">
+                <div className="relative aspect-[4/5] bg-primary-soft/40 rounded-2xl overflow-hidden mb-6 transition-shadow duration-300 group-hover:shadow-elevated">
+                  <ResponsiveImage
+                    asset={product.image}
                     alt={product.name}
-                    loading="lazy"
-                    width={800}
-                    height={1024}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                    sizes="(min-width: 768px) 33vw, 100vw"
+                    className="h-full w-full object-cover"
                   />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-primary/10 via-transparent to-white/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
                   {product.badge ? (
                     <div className="absolute top-4 right-4 bg-white/85 backdrop-blur px-3 py-1 rounded-full text-[9px] uppercase tracking-[0.2em] font-semibold text-foreground">
