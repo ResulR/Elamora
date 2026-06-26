@@ -83,11 +83,14 @@ function HomePage() {
         {/* HERO */}
         <section className="relative min-h-[85vh] flex items-center overflow-hidden">
           <img
-            src="/hero/hero-elamora.jpg"
+            src="/hero/hero-elamora.webp"
             alt="Premium personalized Elamora gift composition with bubble balloon, pastel flowers, satin ribbons and plush"
             className="absolute inset-0 w-full h-full object-cover object-right md:object-center"
-            width={1920}
-            height={1288}
+            width={1600}
+            height={1073}
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/58 to-background/10" />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />

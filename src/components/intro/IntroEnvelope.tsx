@@ -44,10 +44,13 @@ export function IntroEnvelope({ children }: { children: React.ReactNode }) {
   // ── Mount ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     const mobile = window.innerWidth < 768
-    const admin  = window.location.pathname.startsWith('/admin')
+    const homepage = window.location.pathname === '/'
+    const previewRequested =
+      new URLSearchParams(window.location.search).get('intro') === '1'
     let seen = false
     try { seen = !!localStorage.getItem(INTRO_KEY) } catch {}
-    const needs = mobile && !seen && !admin && !prefersReduced
+    const needs =
+      homepage && previewRequested && mobile && !seen && !prefersReduced
     setShowIntro(needs)
     setMounted(true)
     if (needs) document.body.style.overflow = 'hidden'
@@ -192,6 +195,7 @@ export function IntroEnvelope({ children }: { children: React.ReactNode }) {
               autoPlay
               muted
               playsInline
+              preload="metadata"
               onTimeUpdate={handleTimeUpdate}
               onEnded={complete}
               style={{

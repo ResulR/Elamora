@@ -221,6 +221,7 @@ function CheckoutPage() {
           title="Complete your order"
           description="Review your personalized gifts and add your details."
           className="mb-8"
+          level={1}
         />
 
         {!hasItems ? (

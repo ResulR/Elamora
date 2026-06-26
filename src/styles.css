@@ -41,7 +41,7 @@
 
   /* Cormorant Garamond — high-contrast elegant serif, primary display */
   /* Fraunces as refined backup, Georgia as final serif fallback */
-  --font-display: "Cormorant Garamond", "Fraunces", Georgia, serif;
+  --font-display: "Cormorant Garamond", Georgia, serif;
   --font-sans: "Inter", system-ui, sans-serif;
 
   /* Warm rose shadows */

@@ -3,9 +3,18 @@ interface SectionTitleProps {
   title: string;
   description?: string;
   className?: string;
+  level?: 1 | 2;
 }
 
-export function SectionTitle({ eyebrow, title, description, className = "" }: SectionTitleProps) {
+export function SectionTitle({
+  eyebrow,
+  title,
+  description,
+  className = "",
+  level = 2,
+}: SectionTitleProps) {
+  const Heading = level === 1 ? "h1" : "h2";
+
   return (
     <div className={className}>
       {eyebrow && (
@@ -13,7 +22,9 @@ export function SectionTitle({ eyebrow, title, description, className = "" }: Se
           {eyebrow}
         </p>
       )}
-      <h2 className="text-2xl font-display font-medium text-foreground">{title}</h2>
+      <Heading className="text-2xl font-display font-medium text-foreground">
+        {title}
+      </Heading>
       {description && (
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       )}

@@ -64,8 +64,12 @@ export function BucketPreview() {
       {/* Decorative background image — generic Elamora photo, slightly muted */}
       <div className="relative aspect-[3/4] overflow-hidden">
         <img
-          src="/designs/classic-romantic-bucket.png"
+          src="/designs/classic-romantic-bucket.webp"
           alt="Personalized Elamora gift preview"
+          width={720}
+          height={956}
+          loading="lazy"
+          decoding="async"
           className="w-full h-full object-contain opacity-30"
         />
         {/* Overlay content */}

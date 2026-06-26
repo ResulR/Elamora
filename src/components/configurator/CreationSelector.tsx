@@ -38,10 +38,14 @@ function Lightbox({
           <img
             src={design.imageUrl}
             alt={design.name}
+            width={720}
+            height={956}
+            decoding="async"
             className="w-full object-contain max-h-[62vh]"
           />
 
           <button
+            type="button"
             onClick={onClose}
             className="absolute top-3 right-3 h-9 w-9 rounded-full bg-foreground/35 backdrop-blur-sm flex items-center justify-center text-background hover:bg-foreground/55 transition-colors"
             aria-label="Close"
@@ -52,7 +56,7 @@ function Lightbox({
 
         <div className="p-6">
           <div className="flex items-start justify-between gap-3 mb-2">
-            <h3 className="font-display text-2xl leading-tight">{design.name}</h3>
+            <h2 className="font-display text-2xl leading-tight">{design.name}</h2>
             <span className="text-sm text-primary font-medium whitespace-nowrap">
               {formatPrice(priceCents)}
             </span>
@@ -68,6 +72,7 @@ function Lightbox({
 
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={onSelect}
               className="flex-1 px-5 py-3 rounded-full bg-primary text-primary-foreground text-xs uppercase tracking-[0.16em] font-semibold hover:opacity-90 transition-opacity"
             >
@@ -75,6 +80,7 @@ function Lightbox({
             </button>
 
             <button
+              type="button"
               onClick={onClose}
               className="px-5 py-3 rounded-full border border-border text-xs uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground transition-colors"
             >
@@ -110,63 +116,84 @@ export function CreationSelector() {
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-8 max-w-6xl mx-auto">
-        {DESIGN_PRESETS.map((creation) => {
+        {DESIGN_PRESETS.map((creation, index) => {
           const priceCents = getDesignPriceCents(creation);
 
           return (
-          <button
-            key={creation.id}
-            onClick={() => choose(creation)}
-            className="group text-left focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/15 rounded-[28px] cursor-pointer"
-          >
-            <div className="relative aspect-[4/5] max-h-[520px] bg-primary-soft/25 rounded-[28px] overflow-hidden">
-              {!loadedImages[creation.id] && (
-                <div className="absolute inset-0 z-0">
-                  <Skeleton className="h-full w-full rounded-[28px]" />
-                  <div className="absolute inset-x-8 bottom-8 space-y-3">
-                    <Skeleton className="h-3 w-2/3 rounded-full" />
-                    <Skeleton className="h-3 w-1/2 rounded-full" />
+            <article
+              key={creation.id}
+              className="group rounded-[28px]"
+            >
+              <div className="relative aspect-[4/5] max-h-[520px] bg-primary-soft/25 rounded-[28px] overflow-hidden">
+                {!loadedImages[creation.id] && (
+                  <div className="absolute inset-0 z-0">
+                    <Skeleton className="h-full w-full rounded-[28px]" />
+                    <div className="absolute inset-x-8 bottom-8 space-y-3">
+                      <Skeleton className="h-3 w-2/3 rounded-full" />
+                      <Skeleton className="h-3 w-1/2 rounded-full" />
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              <img
-                src={creation.imageUrl}
-                alt={creation.name}
-                loading="lazy"
-                onLoad={() =>
-                  setLoadedImages((current) => ({ ...current, [creation.id]: true }))
-                }
-                className={[
-                  "w-full h-full object-cover transition-all duration-700 ease-out group-hover:scale-[1.04]",
-                  loadedImages[creation.id] ? "opacity-100" : "opacity-0",
-                ].join(" ")}
-              />
+                <img
+                  src={creation.imageUrl}
+                  alt={creation.name}
+                  loading={index === 0 ? "eager" : "lazy"}
+                  fetchPriority={index === 0 ? "high" : "auto"}
+                  decoding="async"
+                  width={720}
+                  height={956}
+                  onLoad={() =>
+                    setLoadedImages((current) => ({
+                      ...current,
+                      [creation.id]: true,
+                    }))
+                  }
+                  className={[
+                    "w-full h-full object-cover transition-all duration-700 ease-out group-hover:scale-[1.04]",
+                    loadedImages[creation.id] ? "opacity-100" : "opacity-0",
+                  ].join(" ")}
+                />
 
-              <div className="absolute inset-0 rounded-[28px] ring-0 ring-primary/0 group-hover:ring-1 group-hover:ring-primary/30 transition-all duration-500" />
+                <div className="absolute inset-0 rounded-[28px] ring-0 ring-primary/0 group-hover:ring-1 group-hover:ring-primary/30 transition-all duration-500 pointer-events-none" />
+
+                <button
+                  type="button"
+                  onClick={() => choose(creation)}
+                  className="absolute inset-0 z-10 rounded-[28px] focus:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-primary/30"
+                  aria-label={`Select ${creation.name}`}
+                >
+                  <span className="sr-only">
+                    Select {creation.name}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setLightbox(creation)}
+                  className="absolute z-20 top-3 right-3 h-9 w-9 rounded-full bg-card/75 backdrop-blur-sm flex items-center justify-center text-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/25"
+                  aria-label={`View ${creation.name} larger`}
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </button>
+              </div>
 
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setLightbox(creation);
-                }}
-                className="absolute top-3 right-3 h-9 w-9 rounded-full bg-card/75 backdrop-blur-sm flex items-center justify-center text-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
-                aria-label={`View ${creation.name} larger`}
+                type="button"
+                onClick={() => choose(creation)}
+                className="block w-full text-left rounded-xl focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/15"
               >
-                <ZoomIn className="h-4 w-4" />
+                <h2 className="font-display text-base md:text-lg mt-4 leading-tight group-hover:italic transition-all">
+                  {creation.name}
+                </h2>
+
+                <span className="block h-px w-6 bg-primary/30 mt-2.5" />
+
+                <span className="block text-primary text-sm mt-2 font-medium">
+                  {formatPrice(priceCents)}
+                </span>
               </button>
-            </div>
-
-            <h3 className="font-display text-base md:text-lg mt-4 leading-tight group-hover:italic transition-all">
-              {creation.name}
-            </h3>
-
-            <span className="block h-px w-6 bg-primary/30 mt-2.5" />
-
-            <p className="text-primary text-sm mt-2 font-medium">
-              {formatPrice(priceCents)}
-            </p>
-          </button>
+            </article>
           );
         })}
       </div>
