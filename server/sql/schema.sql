@@ -80,7 +80,7 @@ CREATE TABLE public.order_items (
 CREATE TABLE public.orders (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     reference text NOT NULL,
-    status text DEFAULT 'pending'::text NOT NULL,
+    status text DEFAULT 'pending_bank_transfer'::text NOT NULL,
     customer_first_name text NOT NULL,
     customer_last_name text,
     customer_email text NOT NULL,
@@ -228,11 +228,35 @@ ALTER TABLE ONLY public.order_notifications
 
 
 --
+-- Name: order_notifications order_notifications_status_check; Type: CHECK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE public.order_notifications
+    ADD CONSTRAINT order_notifications_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'sent'::text, 'failed'::text])));
+
+
+--
 -- Name: orders orders_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.orders
     ADD CONSTRAINT orders_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: orders orders_payment_status_check; Type: CHECK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE public.orders
+    ADD CONSTRAINT orders_payment_status_check CHECK ((payment_status = ANY (ARRAY['pending'::text, 'paid'::text, 'cancelled'::text, 'refunded'::text])));
+
+
+--
+-- Name: orders orders_status_check; Type: CHECK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE public.orders
+    ADD CONSTRAINT orders_status_check CHECK ((status = ANY (ARRAY['pending_bank_transfer'::text, 'confirmed'::text, 'preparing'::text, 'ready_for_pickup'::text, 'shipped'::text, 'completed'::text, 'cancelled'::text, 'refunded'::text])));
 
 
 --
