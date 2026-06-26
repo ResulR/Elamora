@@ -4,12 +4,14 @@ import { AdminLayout } from "@/components/layout/AdminLayout";
 import { EmptyState } from "@/components/ui-kit/EmptyState";
 import {
   buildAdminOrdersExportUrl,
+  buildSelectedOrdersExportUrl,
   getAdminOrdersPage,
+  markAdminOrdersPaid,
   type AdminOrdersPagination,
   type ApiOrder,
 } from "@/lib/orders-api";
 import { formatDate, formatPrice } from "@/lib/format";
-import { Search, ShoppingBag } from "lucide-react";
+import { CheckCircle2, Download, Search, ShoppingBag } from "lucide-react";
 import type { OrderStatus } from "@/types";
 
 export const Route = createFileRoute("/admin/orders/")({
@@ -63,6 +65,10 @@ function AdminOrdersPage() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [selectedReferences, setSelectedReferences] = useState<string[]>([]);
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [bulkNotice, setBulkNotice] = useState<string | null>(null);
 
   const [debouncedQuery, setDebouncedQuery] = useState("");
 
@@ -98,6 +104,7 @@ function AdminOrdersPage() {
         if (cancelled) return;
         setOrders(result.orders);
         setPagination(result.pagination);
+        setSelectedReferences([]);
         setLoadError(null);
       })
       .catch(() => {
@@ -138,6 +145,94 @@ function AdminOrdersPage() {
       },
       format
     );
+  };
+
+  const selectedSet = useMemo(
+    () => new Set(selectedReferences),
+    [selectedReferences]
+  );
+
+  const selectableReferences = useMemo(
+    () => orders.map((order) => order.reference),
+    [orders]
+  );
+
+  const allVisibleSelected =
+    selectableReferences.length > 0 &&
+    selectableReferences.every((reference) => selectedSet.has(reference));
+
+  const selectedPendingCount = orders.filter(
+    (order) =>
+      selectedSet.has(order.reference) &&
+      order.paymentStatus !== "paid"
+  ).length;
+
+  const toggleOrderSelection = (reference: string) => {
+    setSelectedReferences((current) =>
+      current.includes(reference)
+        ? current.filter((item) => item !== reference)
+        : [...current, reference]
+    );
+    setBulkError(null);
+    setBulkNotice(null);
+  };
+
+  const toggleAllVisible = () => {
+    setSelectedReferences(
+      allVisibleSelected ? [] : selectableReferences
+    );
+    setBulkError(null);
+    setBulkNotice(null);
+  };
+
+  const exportSelected = (format: "csv" | "excel") => {
+    if (selectedReferences.length === 0) return;
+    window.location.href = buildSelectedOrdersExportUrl(
+      selectedReferences,
+      format
+    );
+  };
+
+  const handleMarkSelectedPaid = async () => {
+    if (selectedReferences.length === 0) return;
+
+    const confirmed = window.confirm(
+      `Mark ${selectedReferences.length} selected order${
+        selectedReferences.length === 1 ? "" : "s"
+      } as paid? Already paid orders will be ignored.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setIsBulkUpdating(true);
+      setBulkError(null);
+      setBulkNotice(null);
+
+      const result = await markAdminOrdersPaid(selectedReferences);
+
+      const refreshed = await getAdminOrdersPage(filters);
+      setOrders(refreshed.orders);
+      setPagination(refreshed.pagination);
+      setSelectedReferences([]);
+
+      const parts = [
+        `${result.updated} marked as paid`,
+        result.alreadyPaid > 0 ? `${result.alreadyPaid} already paid` : null,
+        result.missing > 0 ? `${result.missing} not found` : null,
+      ].filter(Boolean);
+
+      setBulkNotice(parts.join(" · "));
+    } catch (error) {
+      console.error(error);
+      setBulkError(
+        error instanceof Error
+          ? error.message
+          : "Could not update selected orders"
+      );
+    } finally {
+      setIsBulkUpdating(false);
+    }
   };
 
   const hasActiveFilters =
@@ -228,6 +323,73 @@ function AdminOrdersPage() {
         </div>
       </section>
 
+      {bulkError ? (
+        <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {bulkError}
+        </div>
+      ) : null}
+
+      {bulkNotice ? (
+        <div className="mb-4 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          {bulkNotice}
+        </div>
+      ) : null}
+
+      {selectedReferences.length > 0 ? (
+        <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-primary/25 bg-primary-soft/25 p-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="font-medium text-foreground">
+              {selectedReferences.length} order{selectedReferences.length === 1 ? "" : "s"} selected
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {selectedPendingCount} selected order{selectedPendingCount === 1 ? "" : "s"} can be marked as paid.
+              Selection applies to the current page only.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={isBulkUpdating || selectedPendingCount === 0}
+              onClick={handleMarkSelectedPaid}
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              {isBulkUpdating ? "Updating..." : "Mark selected as paid"}
+            </button>
+
+            <button
+              type="button"
+              disabled={isBulkUpdating}
+              onClick={() => exportSelected("csv")}
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-4 text-sm hover:border-primary/60 disabled:opacity-50"
+            >
+              <Download className="h-4 w-4" />
+              Export selected CSV
+            </button>
+
+            <button
+              type="button"
+              disabled={isBulkUpdating}
+              onClick={() => exportSelected("excel")}
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-4 text-sm hover:border-primary/60 disabled:opacity-50"
+            >
+              <Download className="h-4 w-4" />
+              Export selected Excel
+            </button>
+
+            <button
+              type="button"
+              disabled={isBulkUpdating}
+              onClick={() => setSelectedReferences([])}
+              className="h-10 rounded-xl px-4 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
+            >
+              Clear selection
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 mb-4">
         <p className="text-sm text-muted-foreground">
           {isLoading
@@ -282,8 +444,23 @@ function AdminOrdersPage() {
       ) : (
         <>
           <div className="md:hidden space-y-3">
+            <label className="flex items-center gap-3 rounded-xl border border-border/60 bg-surface/80 px-4 py-3 text-sm">
+              <input
+                type="checkbox"
+                checked={allVisibleSelected}
+                onChange={toggleAllVisible}
+                className="h-5 w-5 accent-primary"
+              />
+              Select all orders on this page
+            </label>
+
             {orders.map((order) => (
-              <OrderMobileCard key={order.id} order={order} />
+              <OrderMobileCard
+                key={order.id}
+                order={order}
+                selected={selectedSet.has(order.reference)}
+                onToggle={() => toggleOrderSelection(order.reference)}
+              />
             ))}
           </div>
 
@@ -292,6 +469,15 @@ function AdminOrdersPage() {
               <table className="w-full text-sm">
               <thead className="bg-muted/40 text-muted-foreground">
                 <tr>
+                  <th className="w-12 px-4 py-3 text-left font-medium">
+                    <input
+                      type="checkbox"
+                      checked={allVisibleSelected}
+                      onChange={toggleAllVisible}
+                      aria-label="Select all orders on this page"
+                      className="h-4 w-4 accent-primary"
+                    />
+                  </th>
                   <th className="text-left font-medium px-4 py-3">Reference</th>
                   <th className="text-left font-medium px-4 py-3">Customer</th>
                   <th className="text-left font-medium px-4 py-3">Email</th>
@@ -306,6 +492,15 @@ function AdminOrdersPage() {
               <tbody>
                 {orders.map((order) => (
                   <tr key={order.id} className="border-t border-border/60">
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedSet.has(order.reference)}
+                        onChange={() => toggleOrderSelection(order.reference)}
+                        aria-label={`Select order ${order.reference}`}
+                        className="h-4 w-4 accent-primary"
+                      />
+                    </td>
                     <td className="px-4 py-3 font-medium">{order.reference}</td>
                     <td className="px-4 py-3">
                       {order.customer.firstName} {order.customer.lastName}
@@ -354,9 +549,30 @@ function AdminOrdersPage() {
   );
 }
 
-function OrderMobileCard({ order }: { order: ApiOrder }) {
+function OrderMobileCard({
+  order,
+  selected,
+  onToggle,
+}: {
+  order: ApiOrder;
+  selected: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <article className="bg-surface/80 border border-border/60 rounded-2xl p-4 shadow-soft">
+    <article className={`bg-surface/80 border rounded-2xl p-4 shadow-soft ${
+      selected ? "border-primary/60 ring-1 ring-primary/20" : "border-border/60"
+    }`}>
+      <div className="mb-3 flex items-center gap-3 border-b border-border/60 pb-3">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggle}
+          aria-label={`Select order ${order.reference}`}
+          className="h-5 w-5 accent-primary"
+        />
+        <span className="text-xs text-muted-foreground">Select this order</span>
+      </div>
+
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-semibold">{order.reference}</p>

@@ -240,6 +240,60 @@ export function buildAdminOrdersExportUrl(
   return query ? `/api/admin/orders/export.csv?${query}` : "/api/admin/orders/export.csv";
 }
 
+export interface BulkMarkPaidResult {
+  requested: number;
+  updated: number;
+  alreadyPaid: number;
+  missing: number;
+  updatedReferences: string[];
+  alreadyPaidReferences: string[];
+  missingReferences: string[];
+}
+
+interface BulkMarkPaidResponse {
+  ok: boolean;
+  result?: BulkMarkPaidResult;
+  error?: string;
+}
+
+export function buildSelectedOrdersExportUrl(
+  references: string[],
+  format: "csv" | "excel" = "csv"
+) {
+  const params = new URLSearchParams();
+  params.set("references", [...new Set(references)].join(","));
+
+  if (format === "excel") {
+    params.set("format", "excel");
+  }
+
+  return `/api/admin/orders/export.csv?${params.toString()}`;
+}
+
+export async function markAdminOrdersPaid(
+  references: string[]
+): Promise<BulkMarkPaidResult> {
+  const response = await fetch("/api/admin/orders/bulk/mark-paid", {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      references: [...new Set(references)],
+    }),
+  });
+
+  const data = await response.json().catch(() => null) as BulkMarkPaidResponse | null;
+
+  if (!response.ok || !data?.ok || !data.result) {
+    throw new Error(data?.error || "Could not mark selected orders as paid");
+  }
+
+  return data.result;
+}
+
 export async function getAdminOrdersPage(
   filters: AdminOrdersFilters = {}
 ): Promise<AdminOrdersResult> {

@@ -214,6 +214,14 @@ const updateOrderPaymentStatusSchema = z.object({
   paymentStatus: z.enum(["pending", "paid", "cancelled", "refunded"]),
 });
 
+const bulkOrderReferencesSchema = z.object({
+  references: z
+    .array(z.string().trim().min(1).max(80))
+    .min(1)
+    .max(100)
+    .transform((references) => [...new Set(references)]),
+});
+
 const productPayloadSchema = z.object({
   categoryCode: z.enum(["bucket", "flower", "balloon", "plush"]),
   name: z.string().trim().min(1).max(160),
@@ -2029,25 +2037,60 @@ app.get("/api/admin/orders", requireAdmin, async (req: AdminRequest, res: Respon
 
 
 app.get("/api/admin/orders/export.csv", requireAdmin, async (req: AdminRequest, res: Response) => {
-  const filters = normalizeAdminOrderFilters(req.query);
+  const referencesParam =
+    typeof req.query.references === "string" ? req.query.references.trim() : "";
 
-  if (!filters.ok) {
-    return res.status(400).json({ ok: false, error: filters.error });
+  let rows: any[] = [];
+
+  if (referencesParam) {
+    const references = [...new Set(
+      referencesParam
+        .split(",")
+        .map((reference) => reference.trim())
+        .filter(Boolean)
+    )];
+
+    if (references.length === 0 || references.length > 100) {
+      return res.status(400).json({
+        ok: false,
+        error: "Select between 1 and 100 orders for export",
+      });
+    }
+
+    const result = await pool.query(
+      `
+        SELECT *
+        FROM orders
+        WHERE reference = ANY($1::text[])
+        ORDER BY created_at DESC
+      `,
+      [references]
+    );
+
+    rows = result.rows;
+  } else {
+    const filters = normalizeAdminOrderFilters(req.query);
+
+    if (!filters.ok) {
+      return res.status(400).json({ ok: false, error: filters.error });
+    }
+
+    const result = await pool.query(
+      `
+        SELECT *
+        FROM orders
+        ${filters.whereSql}
+        ORDER BY created_at DESC
+      `,
+      filters.values
+    );
+
+    rows = result.rows;
   }
-
-  const result = await pool.query(
-    `
-      SELECT *
-      FROM orders
-      ${filters.whereSql}
-      ORDER BY created_at DESC
-    `,
-    filters.values
-  );
 
   const format = typeof req.query.format === "string" ? req.query.format.trim() : "";
   const excel = format === "excel";
-  const csv = buildOrdersCsv(result.rows, { excel });
+  const csv = buildOrdersCsv(rows, { excel });
   const filename = buildOrdersExportFilename(format);
 
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
@@ -2093,6 +2136,130 @@ app.get("/api/admin/orders/:reference", requireAdmin, async (req: AdminRequest, 
     },
   });
 });
+
+app.post(
+  "/api/admin/orders/bulk/mark-paid",
+  requireAdmin,
+  async (req: AdminRequest, res: Response) => {
+    const parsed = bulkOrderReferencesSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      return res.status(400).json({
+        ok: false,
+        error: parsed.error.issues[0]?.message ?? "Invalid order selection",
+      });
+    }
+
+    const references = parsed.data.references;
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const existingResult = await client.query(
+        `
+          SELECT id, reference, status, payment_status
+          FROM orders
+          WHERE reference = ANY($1::text[])
+          FOR UPDATE
+        `,
+        [references]
+      );
+
+      const existingByReference = new Map(
+        existingResult.rows.map((row) => [String(row.reference), row])
+      );
+
+      const missing = references.filter(
+        (reference) => !existingByReference.has(reference)
+      );
+
+      const alreadyPaid = existingResult.rows
+        .filter((row) => row.payment_status === "paid")
+        .map((row) => String(row.reference));
+
+      const referencesToUpdate = existingResult.rows
+        .filter((row) => row.payment_status !== "paid")
+        .map((row) => String(row.reference));
+
+      let updatedRows: any[] = [];
+
+      if (referencesToUpdate.length > 0) {
+        const updateResult = await client.query(
+          `
+            UPDATE orders
+            SET payment_status = 'paid',
+                payment_reference = COALESCE(payment_reference, reference),
+                paid_at = COALESCE(paid_at, now()),
+                status = CASE
+                  WHEN status = 'pending_bank_transfer' THEN 'confirmed'
+                  ELSE status
+                END,
+                updated_at = now()
+            WHERE reference = ANY($1::text[])
+              AND payment_status <> 'paid'
+            RETURNING *
+          `,
+          [referencesToUpdate]
+        );
+
+        updatedRows = updateResult.rows;
+      }
+
+      await client.query("COMMIT");
+
+      const updatedOrders = updatedRows.map(mapOrderRow);
+
+      for (const order of updatedOrders) {
+        const previous = existingByReference.get(order.reference);
+
+        await logAdminAction(req, {
+          action: "order.payment_status.update",
+          targetType: "order",
+          targetId: order.reference,
+          payload: {
+            source: "bulk",
+            previousStatus: previous?.status ?? null,
+            previousPaymentStatus: previous?.payment_status ?? null,
+            nextPaymentStatus: "paid",
+            orderStatus: order.status,
+            paymentStatus: order.paymentStatus,
+          },
+        });
+      }
+
+      await logAdminAction(req, {
+        action: "orders.bulk.mark_paid",
+        targetType: "orders",
+        targetId: null,
+        payload: {
+          requestedReferences: references,
+          updatedReferences: updatedOrders.map((order) => order.reference),
+          alreadyPaidReferences: alreadyPaid,
+          missingReferences: missing,
+        },
+      });
+
+      return res.json({
+        ok: true,
+        result: {
+          requested: references.length,
+          updated: updatedOrders.length,
+          alreadyPaid: alreadyPaid.length,
+          missing: missing.length,
+          updatedReferences: updatedOrders.map((order) => order.reference),
+          alreadyPaidReferences: alreadyPaid,
+          missingReferences: missing,
+        },
+      });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+);
 
 app.patch(
   "/api/admin/orders/:reference/payment-status",
