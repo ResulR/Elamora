@@ -26,6 +26,7 @@ import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminProfileRouteImport } from './routes/admin.profile'
 import { Route as AdminProductsRouteImport } from './routes/admin.products'
 import { Route as AdminDeliveryRouteImport } from './routes/admin.delivery'
+import { Route as AdminAuditLogRouteImport } from './routes/admin.audit-log'
 import { Route as AdminOrdersIndexRouteImport } from './routes/admin.orders.index'
 import { Route as AdminOrdersIdRouteImport } from './routes/admin.orders.$id'
 
@@ -114,6 +115,11 @@ const AdminDeliveryRoute = AdminDeliveryRouteImport.update({
   path: '/admin/delivery',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminAuditLogRoute = AdminAuditLogRouteImport.update({
+  id: '/admin/audit-log',
+  path: '/admin/audit-log',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminOrdersIndexRoute = AdminOrdersIndexRouteImport.update({
   id: '/admin/orders/',
   path: '/admin/orders/',
@@ -132,6 +138,7 @@ export interface FileRoutesByFullPath {
   '/confirmation': typeof ConfirmationRoute
   '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
+  '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/delivery': typeof AdminDeliveryRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/profile': typeof AdminProfileRoute
@@ -153,6 +160,7 @@ export interface FileRoutesByTo {
   '/confirmation': typeof ConfirmationRoute
   '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
+  '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/delivery': typeof AdminDeliveryRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/profile': typeof AdminProfileRoute
@@ -175,6 +183,7 @@ export interface FileRoutesById {
   '/confirmation': typeof ConfirmationRoute
   '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
+  '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/delivery': typeof AdminDeliveryRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/profile': typeof AdminProfileRoute
@@ -198,6 +207,7 @@ export interface FileRouteTypes {
     | '/confirmation'
     | '/contact'
     | '/login'
+    | '/admin/audit-log'
     | '/admin/delivery'
     | '/admin/products'
     | '/admin/profile'
@@ -219,6 +229,7 @@ export interface FileRouteTypes {
     | '/confirmation'
     | '/contact'
     | '/login'
+    | '/admin/audit-log'
     | '/admin/delivery'
     | '/admin/products'
     | '/admin/profile'
@@ -240,6 +251,7 @@ export interface FileRouteTypes {
     | '/confirmation'
     | '/contact'
     | '/login'
+    | '/admin/audit-log'
     | '/admin/delivery'
     | '/admin/products'
     | '/admin/profile'
@@ -262,6 +274,7 @@ export interface RootRouteChildren {
   ConfirmationRoute: typeof ConfirmationRoute
   ContactRoute: typeof ContactRoute
   LoginRoute: typeof LoginRoute
+  AdminAuditLogRoute: typeof AdminAuditLogRoute
   AdminDeliveryRoute: typeof AdminDeliveryRoute
   AdminProductsRoute: typeof AdminProductsRoute
   AdminProfileRoute: typeof AdminProfileRoute
@@ -398,6 +411,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDeliveryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/audit-log': {
+      id: '/admin/audit-log'
+      path: '/admin/audit-log'
+      fullPath: '/admin/audit-log'
+      preLoaderRoute: typeof AdminAuditLogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/orders/': {
       id: '/admin/orders/'
       path: '/admin/orders'
@@ -422,6 +442,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConfirmationRoute: ConfirmationRoute,
   ContactRoute: ContactRoute,
   LoginRoute: LoginRoute,
+  AdminAuditLogRoute: AdminAuditLogRoute,
   AdminDeliveryRoute: AdminDeliveryRoute,
   AdminProductsRoute: AdminProductsRoute,
   AdminProfileRoute: AdminProfileRoute,

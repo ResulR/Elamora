@@ -18,6 +18,13 @@ const sensitiveKeyPatterns = [
   "confirmationtoken",
   "confirmation_token",
   "confirmation_token_hash",
+  "iban",
+  "bankiban",
+  "bank_iban",
+  "bankaccount",
+  "bank_account",
+  "accountnumber",
+  "account_number",
 ];
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -30,7 +37,7 @@ function shouldRedactKey(key: string) {
   return sensitiveKeyPatterns.some((pattern) => normalized.includes(pattern));
 }
 
-function redactSensitiveData(value: unknown): unknown {
+export function redactSensitiveData(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map((item) => redactSensitiveData(item));
   }

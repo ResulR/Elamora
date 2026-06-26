@@ -1,10 +1,10 @@
 ﻿import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { LayoutDashboard, ShoppingBag, Package,
-  Truck, Settings, UserRound, Flower2, LogOut } from "lucide-react";
+  Truck, Settings, UserRound, ClipboardList, Flower2, LogOut } from "lucide-react";
 import { logoutAdmin } from "@/lib/admin-auth";
 
 const items: Array<{
-  to: "/admin" | "/admin/orders" | "/admin/products" | "/admin/delivery" | "/admin/settings" | "/admin/profile";
+  to: "/admin" | "/admin/orders" | "/admin/products" | "/admin/delivery" | "/admin/settings" | "/admin/profile" | "/admin/audit-log";
   label: string;
   icon: typeof LayoutDashboard;
   exact?: boolean;
@@ -15,6 +15,7 @@ const items: Array<{
   { to: "/admin/delivery", label: "Delivery", icon: Truck },
   { to: "/admin/settings", label: "Settings", icon: Settings },
   { to: "/admin/profile", label: "Profile", icon: UserRound },
+  { to: "/admin/audit-log", label: "Audit log", icon: ClipboardList },
 ];
 
 export function AdminSidebar({ adminEmail }: { adminEmail: string }) {

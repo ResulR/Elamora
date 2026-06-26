@@ -11,6 +11,7 @@ import {
   Settings,
   ShoppingBag,
   UserRound,
+  ClipboardList,
 } from "lucide-react";
 import { AdminSidebar } from "./AdminSidebar";
 import { getCurrentAdmin, logoutAdmin, type AdminSession } from "@/lib/admin-auth";
@@ -23,7 +24,7 @@ import {
 } from "@/components/ui/sheet";
 
 const mobileItems: Array<{
-  to: "/admin" | "/admin/orders" | "/admin/products" | "/admin/delivery" | "/admin/settings" | "/admin/profile";
+  to: "/admin" | "/admin/orders" | "/admin/products" | "/admin/delivery" | "/admin/settings" | "/admin/profile" | "/admin/audit-log";
   label: string;
   icon: typeof LayoutDashboard;
   exact?: boolean;
@@ -34,6 +35,7 @@ const mobileItems: Array<{
   { to: "/admin/delivery", label: "Delivery", icon: Truck },
   { to: "/admin/settings", label: "Settings", icon: Settings },
   { to: "/admin/profile", label: "Profile", icon: UserRound },
+  { to: "/admin/audit-log", label: "Audit log", icon: ClipboardList },
 ];
 
 export function AdminLayout({ children, title }: { children: ReactNode; title: string }) {

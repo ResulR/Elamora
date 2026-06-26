@@ -21,7 +21,7 @@ import {
   sendOrderStatusNotificationEmail,
   sendOrderAcknowledgmentEmail,
 } from "./email.js";
-import { logAdminAction } from "./admin-audit.js";
+import { logAdminAction, redactSensitiveData } from "./admin-audit.js";
 import { logger, logError } from "./logger.js";
 import { requireAdmin, type AdminRequest } from "./middleware/require-admin.js";
 import { requireSameOrigin } from "./middleware/require-same-origin.js";
@@ -1182,6 +1182,215 @@ app.post(
     return res.json({
       ok: true,
       requiresLogin: true,
+    });
+  }
+);
+
+function mapAdminAuditLogRow(row: any) {
+  return {
+    id: String(row.id),
+    adminId: row.admin_id ? String(row.admin_id) : null,
+    adminEmail: row.admin_email ?? "[deleted admin]",
+    action: row.action,
+    targetType: row.target_type,
+    targetId: row.target_id ?? "",
+    payload: redactSensitiveData(row.payload ?? {}),
+    createdAt:
+      row.created_at instanceof Date
+        ? row.created_at.toISOString()
+        : String(row.created_at),
+  };
+}
+
+app.get(
+  "/api/admin/audit-log",
+  requireAdmin,
+  async (req: AdminRequest, res: Response) => {
+    const where: string[] = [];
+    const values: unknown[] = [];
+
+    const addValue = (value: unknown) => {
+      values.push(value);
+      return `$${values.length}`;
+    };
+
+    const adminId =
+      typeof req.query.adminId === "string"
+        ? req.query.adminId.trim()
+        : "";
+
+    const action =
+      typeof req.query.action === "string"
+        ? req.query.action.trim()
+        : "";
+
+    const dateFrom =
+      typeof req.query.dateFrom === "string"
+        ? req.query.dateFrom.trim()
+        : "";
+
+    const dateTo =
+      typeof req.query.dateTo === "string"
+        ? req.query.dateTo.trim()
+        : "";
+
+    const q =
+      typeof req.query.q === "string"
+        ? req.query.q.trim()
+        : "";
+
+    if (adminId && adminId !== "all") {
+      if (
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          adminId
+        )
+      ) {
+        return res.status(400).json({
+          ok: false,
+          error: "Invalid admin filter",
+        });
+      }
+
+      where.push(`l.admin_id = ${addValue(adminId)}`);
+    }
+
+    if (action && action !== "all") {
+      where.push(`l.action = ${addValue(action)}`);
+    }
+
+    if (dateFrom) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateFrom)) {
+        return res.status(400).json({
+          ok: false,
+          error: "Invalid start date",
+        });
+      }
+
+      where.push(`l.created_at >= ${addValue(dateFrom)}::date`);
+    }
+
+    if (dateTo) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateTo)) {
+        return res.status(400).json({
+          ok: false,
+          error: "Invalid end date",
+        });
+      }
+
+      where.push(
+        `l.created_at < (${addValue(dateTo)}::date + interval '1 day')`
+      );
+    }
+
+    if (q) {
+      const search = `%${q}%`;
+      const targetIdParam = addValue(search);
+      const targetTypeParam = addValue(search);
+      const actionParam = addValue(search);
+
+      where.push(
+        `(COALESCE(l.target_id, '') ILIKE ${targetIdParam}
+          OR l.target_type ILIKE ${targetTypeParam}
+          OR l.action ILIKE ${actionParam})`
+      );
+    }
+
+    const requestedPage = Number.parseInt(
+      String(req.query.page ?? "1"),
+      10
+    );
+
+    const requestedPageSize = Number.parseInt(
+      String(req.query.pageSize ?? "20"),
+      10
+    );
+
+    const page =
+      Number.isFinite(requestedPage) && requestedPage > 0
+        ? requestedPage
+        : 1;
+
+    const pageSize = Number.isFinite(requestedPageSize)
+      ? Math.min(Math.max(requestedPageSize, 10), 100)
+      : 20;
+
+    const offset = (page - 1) * pageSize;
+    const whereSql =
+      where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
+
+    const countResult = await pool.query(
+      `
+        SELECT COUNT(*)::int AS total
+        FROM admin_audit_log l
+        LEFT JOIN admins a ON a.id = l.admin_id
+        ${whereSql}
+      `,
+      values
+    );
+
+    const total = Number(countResult.rows[0]?.total ?? 0);
+
+    const listValues = [...values, pageSize, offset];
+    const pageSizeParam = `$${values.length + 1}`;
+    const offsetParam = `$${values.length + 2}`;
+
+    const result = await pool.query(
+      `
+        SELECT
+          l.id,
+          l.admin_id,
+          COALESCE(a.email, '[deleted admin]') AS admin_email,
+          l.action,
+          l.target_type,
+          l.target_id,
+          l.payload,
+          l.created_at
+        FROM admin_audit_log l
+        LEFT JOIN admins a ON a.id = l.admin_id
+        ${whereSql}
+        ORDER BY l.created_at DESC
+        LIMIT ${pageSizeParam}
+        OFFSET ${offsetParam}
+      `,
+      listValues
+    );
+
+    const metadataResult = await pool.query(
+      `
+        SELECT
+          COALESCE(
+            json_agg(
+              DISTINCT jsonb_build_object(
+                'id', a.id,
+                'email', a.email
+              )
+            ) FILTER (WHERE a.id IS NOT NULL),
+            '[]'::json
+          ) AS admins,
+          COALESCE(
+            json_agg(DISTINCT l.action ORDER BY l.action),
+            '[]'::json
+          ) AS actions
+        FROM admin_audit_log l
+        LEFT JOIN admins a ON a.id = l.admin_id
+      `
+    );
+
+    const metadata = metadataResult.rows[0] ?? {};
+
+    return res.json({
+      ok: true,
+      entries: result.rows.map(mapAdminAuditLogRow),
+      filters: {
+        admins: metadata.admins ?? [],
+        actions: metadata.actions ?? [],
+      },
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      },
     });
   }
 );
