@@ -10,6 +10,7 @@ import {
   Truck,
   Settings,
   ShoppingBag,
+  UserRound,
 } from "lucide-react";
 import { AdminSidebar } from "./AdminSidebar";
 import { getCurrentAdmin, logoutAdmin, type AdminSession } from "@/lib/admin-auth";
@@ -22,7 +23,7 @@ import {
 } from "@/components/ui/sheet";
 
 const mobileItems: Array<{
-  to: "/admin" | "/admin/orders" | "/admin/products" | "/admin/delivery" | "/admin/settings";
+  to: "/admin" | "/admin/orders" | "/admin/products" | "/admin/delivery" | "/admin/settings" | "/admin/profile";
   label: string;
   icon: typeof LayoutDashboard;
   exact?: boolean;
@@ -32,6 +33,7 @@ const mobileItems: Array<{
   { to: "/admin/products", label: "Products", icon: Package },
   { to: "/admin/delivery", label: "Delivery", icon: Truck },
   { to: "/admin/settings", label: "Settings", icon: Settings },
+  { to: "/admin/profile", label: "Profile", icon: UserRound },
 ];
 
 export function AdminLayout({ children, title }: { children: ReactNode; title: string }) {

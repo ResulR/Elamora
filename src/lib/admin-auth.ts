@@ -48,6 +48,38 @@ export async function getCurrentAdmin(): Promise<AdminSession | null> {
   return data.admin;
 }
 
+interface ChangeAdminPasswordResponse {
+  ok: boolean;
+  requiresLogin?: boolean;
+  error?: string;
+}
+
+export async function changeAdminPassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<void> {
+  const response = await fetch("/api/admin/change-password", {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      currentPassword,
+      newPassword,
+    }),
+  });
+
+  const data = await response
+    .json()
+    .catch(() => null) as ChangeAdminPasswordResponse | null;
+
+  if (!response.ok || !data?.ok) {
+    throw new Error(data?.error || "Could not change password");
+  }
+}
+
 export async function logoutAdmin(): Promise<void> {
   await fetch("/api/admin/logout", {
     method: "POST",

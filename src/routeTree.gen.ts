@@ -23,6 +23,7 @@ import { Route as LegalCookiesRouteImport } from './routes/legal.cookies'
 import { Route as LegalConfidentialiteRouteImport } from './routes/legal.confidentialite'
 import { Route as LegalCgvRouteImport } from './routes/legal.cgv'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminProfileRouteImport } from './routes/admin.profile'
 import { Route as AdminProductsRouteImport } from './routes/admin.products'
 import { Route as AdminDeliveryRouteImport } from './routes/admin.delivery'
 import { Route as AdminOrdersIndexRouteImport } from './routes/admin.orders.index'
@@ -98,6 +99,11 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
   path: '/admin/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminProfileRoute = AdminProfileRouteImport.update({
+  id: '/admin/profile',
+  path: '/admin/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminProductsRoute = AdminProductsRouteImport.update({
   id: '/admin/products',
   path: '/admin/products',
@@ -128,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/admin/delivery': typeof AdminDeliveryRoute
   '/admin/products': typeof AdminProductsRoute
+  '/admin/profile': typeof AdminProfileRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/legal/cgv': typeof LegalCgvRoute
   '/legal/confidentialite': typeof LegalConfidentialiteRoute
@@ -148,6 +155,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/admin/delivery': typeof AdminDeliveryRoute
   '/admin/products': typeof AdminProductsRoute
+  '/admin/profile': typeof AdminProfileRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/legal/cgv': typeof LegalCgvRoute
   '/legal/confidentialite': typeof LegalConfidentialiteRoute
@@ -169,6 +177,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/admin/delivery': typeof AdminDeliveryRoute
   '/admin/products': typeof AdminProductsRoute
+  '/admin/profile': typeof AdminProfileRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/legal/cgv': typeof LegalCgvRoute
   '/legal/confidentialite': typeof LegalConfidentialiteRoute
@@ -191,6 +200,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin/delivery'
     | '/admin/products'
+    | '/admin/profile'
     | '/admin/settings'
     | '/legal/cgv'
     | '/legal/confidentialite'
@@ -211,6 +221,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin/delivery'
     | '/admin/products'
+    | '/admin/profile'
     | '/admin/settings'
     | '/legal/cgv'
     | '/legal/confidentialite'
@@ -231,6 +242,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin/delivery'
     | '/admin/products'
+    | '/admin/profile'
     | '/admin/settings'
     | '/legal/cgv'
     | '/legal/confidentialite'
@@ -252,6 +264,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   AdminDeliveryRoute: typeof AdminDeliveryRoute
   AdminProductsRoute: typeof AdminProductsRoute
+  AdminProfileRoute: typeof AdminProfileRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   LegalCgvRoute: typeof LegalCgvRoute
   LegalConfidentialiteRoute: typeof LegalConfidentialiteRoute
@@ -364,6 +377,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/profile': {
+      id: '/admin/profile'
+      path: '/admin/profile'
+      fullPath: '/admin/profile'
+      preLoaderRoute: typeof AdminProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/products': {
       id: '/admin/products'
       path: '/admin/products'
@@ -404,6 +424,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   AdminDeliveryRoute: AdminDeliveryRoute,
   AdminProductsRoute: AdminProductsRoute,
+  AdminProfileRoute: AdminProfileRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   LegalCgvRoute: LegalCgvRoute,
   LegalConfidentialiteRoute: LegalConfidentialiteRoute,

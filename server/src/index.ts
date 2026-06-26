@@ -283,6 +283,14 @@ function createConfirmationToken() {
   return crypto.randomBytes(32).toString("hex");
 }
 
+const changeAdminPasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z
+    .string()
+    .min(12, "New password must be at least 12 characters")
+    .max(200, "New password is too long"),
+});
+
 function hashConfirmationToken(token: string) {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
@@ -1085,6 +1093,98 @@ app.put("/api/admin/settings", requireAdmin, async (req: AdminRequest, res: Resp
     settings,
   });
 });
+
+app.post(
+  "/api/admin/change-password",
+  requireAdmin,
+  async (req: AdminRequest, res: Response) => {
+    const parsed = changeAdminPasswordSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      return res.status(400).json({
+        ok: false,
+        error:
+          parsed.error.issues[0]?.message ??
+          "Invalid password change request",
+      });
+    }
+
+    if (parsed.data.currentPassword === parsed.data.newPassword) {
+      return res.status(400).json({
+        ok: false,
+        error: "The new password must be different from the current password",
+      });
+    }
+
+    const adminResult = await pool.query(
+      `
+        SELECT id, email, password_hash
+        FROM admins
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [req.admin?.sub]
+    );
+
+    const admin = adminResult.rows[0];
+
+    if (!admin) {
+      return res.status(404).json({
+        ok: false,
+        error: "Admin account not found",
+      });
+    }
+
+    const currentPasswordIsValid = await bcrypt.compare(
+      parsed.data.currentPassword,
+      admin.password_hash
+    );
+
+    if (!currentPasswordIsValid) {
+      return res.status(400).json({
+        ok: false,
+        error: "Current password is incorrect",
+      });
+    }
+
+    const newPasswordHash = await bcrypt.hash(
+      parsed.data.newPassword,
+      12
+    );
+
+    await pool.query(
+      `
+        UPDATE admins
+        SET password_hash = $2,
+            updated_at = now()
+        WHERE id = $1
+      `,
+      [admin.id, newPasswordHash]
+    );
+
+    await logAdminAction(req, {
+      action: "admin.password.change",
+      targetType: "admin",
+      targetId: String(admin.id),
+      payload: {
+        email: admin.email,
+        sessionCleared: true,
+      },
+    });
+
+    res.clearCookie("elamora_admin_token", {
+      httpOnly: true,
+      secure: config.cookieSecure,
+      sameSite: "strict",
+      path: "/",
+    });
+
+    return res.json({
+      ok: true,
+      requiresLogin: true,
+    });
+  }
+);
 
 function mapDeliveryZoneRow(row: any) {
   return {
