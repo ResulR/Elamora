@@ -12,7 +12,7 @@ export interface ApiOrderItem {
   createdAt: string;
 }
 
-export interface ApiOrder {
+export interface ApiOrderBase {
   id: string;
   reference: string;
   status: OrderStatus;
@@ -45,11 +45,17 @@ export interface ApiOrder {
   paidAt: string | null;
   trackingNumber: string;
   trackingCarrier: string;
-  internalNotes: string;
   createdAt: string;
   updatedAt: string;
-  confirmationToken?: string;
   items?: ApiOrderItem[];
+}
+
+export interface ApiPublicOrder extends ApiOrderBase {
+  confirmationToken?: string;
+}
+
+export interface ApiAdminOrder extends ApiOrderBase {
+  internalNotes: string;
 }
 
 export interface CreateOrderPayload {
@@ -80,9 +86,15 @@ export interface CreateOrderPayload {
   }>;
 }
 
-interface ApiOrderResponse {
+interface ApiPublicOrderResponse {
   ok: boolean;
-  order?: ApiOrder;
+  order?: ApiPublicOrder;
+  error?: string;
+}
+
+interface ApiAdminOrderResponse {
+  ok: boolean;
+  order?: ApiAdminOrder;
   error?: string;
 }
 
@@ -100,7 +112,7 @@ export interface AdminOrdersPagination {
 
 interface ApiOrdersResponse {
   ok: boolean;
-  orders?: ApiOrder[];
+  orders?: ApiAdminOrder[];
   pagination?: AdminOrdersPagination;
   error?: string;
 }
@@ -117,7 +129,7 @@ export interface AdminOrdersFilters {
 }
 
 export interface AdminOrdersResult {
-  orders: ApiOrder[];
+  orders: ApiAdminOrder[];
   pagination: AdminOrdersPagination;
 }
 
@@ -148,7 +160,7 @@ export async function getBankTransferInfo(): Promise<BankTransferInfo> {
   return data.bankTransfer;
 }
 
-export async function createDatabaseOrder(payload: CreateOrderPayload): Promise<ApiOrder> {
+export async function createDatabaseOrder(payload: CreateOrderPayload): Promise<ApiPublicOrder> {
   const response = await fetch("/api/orders", {
     method: "POST",
     headers: {
@@ -157,7 +169,7 @@ export async function createDatabaseOrder(payload: CreateOrderPayload): Promise<
     body: JSON.stringify(payload),
   });
 
-  const data = await response.json().catch(() => null) as ApiOrderResponse | null;
+  const data = await response.json().catch(() => null) as ApiPublicOrderResponse | null;
 
   if (!response.ok || !data?.ok || !data.order) {
     throw new Error(data?.error || "Could not create order");
@@ -166,7 +178,7 @@ export async function createDatabaseOrder(payload: CreateOrderPayload): Promise<
   return data.order;
 }
 
-export async function getPublicOrder(reference: string, token: string): Promise<ApiOrder> {
+export async function getPublicOrder(reference: string, token: string): Promise<ApiPublicOrder> {
   const response = await fetch(
     `/api/orders/confirmation/${encodeURIComponent(reference)}?token=${encodeURIComponent(token)}`,
     {
@@ -174,7 +186,7 @@ export async function getPublicOrder(reference: string, token: string): Promise<
     }
   );
 
-  const data = await response.json().catch(() => null) as ApiOrderResponse | null;
+  const data = await response.json().catch(() => null) as ApiPublicOrderResponse | null;
 
   if (!response.ok || !data?.ok || !data.order) {
     throw new Error(data?.error || "Order not found");
@@ -319,18 +331,18 @@ export async function getAdminOrdersPage(
   };
 }
 
-export async function getAdminOrders(): Promise<ApiOrder[]> {
+export async function getAdminOrders(): Promise<ApiAdminOrder[]> {
   const result = await getAdminOrdersPage();
   return result.orders;
 }
 
-export async function getAdminOrder(reference: string): Promise<ApiOrder> {
+export async function getAdminOrder(reference: string): Promise<ApiAdminOrder> {
   const response = await fetch(`/api/admin/orders/${encodeURIComponent(reference)}`, {
     method: "GET",
     credentials: "include",
   });
 
-  const data = await response.json().catch(() => null) as ApiOrderResponse | null;
+  const data = await response.json().catch(() => null) as ApiAdminOrderResponse | null;
 
   if (!response.ok || !data?.ok || !data.order) {
     throw new Error(data?.error || "Order not found");
@@ -342,7 +354,7 @@ export async function getAdminOrder(reference: string): Promise<ApiOrder> {
 export async function updateAdminOrderPaymentStatus(
   reference: string,
   paymentStatus: "pending" | "paid" | "cancelled" | "refunded"
-): Promise<ApiOrder> {
+): Promise<ApiAdminOrder> {
   const response = await fetch(`/api/admin/orders/${encodeURIComponent(reference)}/payment-status`, {
     method: "PATCH",
     headers: {
@@ -352,7 +364,7 @@ export async function updateAdminOrderPaymentStatus(
     body: JSON.stringify({ paymentStatus }),
   });
 
-  const data = await response.json().catch(() => null) as ApiOrderResponse | null;
+  const data = await response.json().catch(() => null) as ApiAdminOrderResponse | null;
 
   if (!response.ok || !data?.ok || !data.order) {
     throw new Error(data?.error || "Could not update payment status");
@@ -378,7 +390,7 @@ export async function updateAdminOrderStatus(
   reference: string,
   status: OrderStatus,
   payload: { trackingNumber?: string; trackingCarrier?: string } = {}
-): Promise<ApiOrder> {
+): Promise<ApiAdminOrder> {
   const response = await fetch(`/api/admin/orders/${encodeURIComponent(reference)}/status`, {
     method: "PATCH",
     headers: {
@@ -388,7 +400,7 @@ export async function updateAdminOrderStatus(
     body: JSON.stringify({ status, ...payload }),
   });
 
-  const data = await response.json().catch(() => null) as ApiOrderResponse | null;
+  const data = await response.json().catch(() => null) as ApiAdminOrderResponse | null;
 
   if (!response.ok || !data?.ok || !data.order) {
     throw new Error(data?.error || "Could not update order status");

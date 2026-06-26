@@ -21,7 +21,7 @@ import {
   sendAdminOrderPaymentReminder,
   updateAdminOrderPaymentStatus,
   updateAdminOrderStatus,
-  type ApiOrder,
+  type ApiAdminOrder,
 } from "@/lib/orders-api";
 import { formatDate, formatPrice } from "@/lib/format";
 import type { OrderStatus } from "@/types";
@@ -43,7 +43,7 @@ function AdminOrderDetailPage() {
   const { id } = Route.useParams();
 
   const [order, setOrder] = useState<
-    ApiOrder | null | undefined
+    ApiAdminOrder | null | undefined
   >(undefined);
 
   const [isUpdatingStatus, setIsUpdatingStatus] =
@@ -77,7 +77,7 @@ function AdminOrderDetailPage() {
       .catch(() => setOrder(null));
   }, [id]);
 
-  function mergeUpdatedOrder(updatedOrder: ApiOrder) {
+  function mergeUpdatedOrder(updatedOrder: ApiAdminOrder) {
     setOrder((current) => {
       if (!current) return current;
 

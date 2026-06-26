@@ -1,4 +1,4 @@
-import type { ApiOrder } from "@/lib/orders-api";
+import type { ApiAdminOrder } from "@/lib/orders-api";
 import { formatDate } from "@/lib/format";
 import {
   OrderDetailCard,
@@ -8,7 +8,7 @@ import {
 export function OrderTimeline({
   order,
 }: {
-  order: ApiOrder;
+  order: ApiAdminOrder;
 }) {
   return (
     <OrderDetailCard title="System">

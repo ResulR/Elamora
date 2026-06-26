@@ -1,4 +1,4 @@
-import type { ApiOrder } from "@/lib/orders-api";
+import type { ApiAdminOrder } from "@/lib/orders-api";
 import { formatDate, formatPrice } from "@/lib/format";
 import {
   formatPaymentStatus,
@@ -9,7 +9,7 @@ import {
 export function OrderHeader({
   order,
 }: {
-  order: ApiOrder;
+  order: ApiAdminOrder;
 }) {
   return (
     <section className="bg-surface/80 border border-border/60 rounded-2xl p-4 md:p-6 shadow-soft">

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { formatPrice } from "@/lib/format";
-import { getAdminOrders, type ApiOrder } from "@/lib/orders-api";
+import { getAdminOrders, type ApiAdminOrder } from "@/lib/orders-api";
 import { fetchAdminCatalog } from "@/lib/admin-catalog-api";
 import { ShoppingBag, Clock, TrendingUp, Package } from "lucide-react";
 
@@ -12,7 +12,7 @@ export const Route = createFileRoute("/admin/")({
 });
 
 function AdminDashboard() {
-  const [orders, setOrders] = useState<ApiOrder[]>([]);
+  const [orders, setOrders] = useState<ApiAdminOrder[]>([]);
   const [activeProductsCount, setActiveProductsCount] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);

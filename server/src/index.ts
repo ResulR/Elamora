@@ -763,7 +763,7 @@ app.post("/api/orders", publicOrderLimiter, async (req: Request, res: Response) 
     return res.status(201).json({
       ok: true,
       order: {
-        ...mapOrderRow(order),
+        ...mapPublicOrderRow(order),
         confirmationToken,
       },
     });
@@ -3564,6 +3564,15 @@ function mapOrderRow(row: any) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function mapPublicOrderRow(row: any) {
+  const {
+    internalNotes: _internalNotes,
+    ...publicOrder
+  } = mapOrderRow(row);
+
+  return publicOrder;
 }
 
 function mapOrderItemRow(row: any) {

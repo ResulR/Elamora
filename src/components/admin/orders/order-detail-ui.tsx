@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { ApiOrder } from "@/lib/orders-api";
+import type { ApiAdminOrder } from "@/lib/orders-api";
 import { formatDate } from "@/lib/format";
 import type { OrderStatus } from "@/types";
 
@@ -64,7 +64,7 @@ export function OrderSimpleBadge({
 export function OrderAddressBlock({
   order,
 }: {
-  order: ApiOrder;
+  order: ApiAdminOrder;
 }) {
   const lines = [
     order.customer.address || order.customer.addressLine1,

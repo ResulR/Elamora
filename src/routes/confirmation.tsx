@@ -6,7 +6,7 @@ import {
   getBankTransferInfo,
   getPublicOrder,
   requestOrderRecapEmail,
-  type ApiOrder,
+  type ApiPublicOrder,
   type BankTransferInfo,
 } from "@/lib/orders-api";
 import { formatDate, formatPrice } from "@/lib/format";
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/confirmation")({
 });
 
 function ConfirmationPage() {
-  const [order, setOrder] = useState<ApiOrder | null>(null);
+  const [order, setOrder] = useState<ApiPublicOrder | null>(null);
   const [bankTransferInfo, setBankTransferInfo] = useState<BankTransferInfo | null>(null);
   const [confirmationAccess, setConfirmationAccess] = useState<{ reference: string; token: string } | null>(null);
   const [recapStatus, setRecapStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");

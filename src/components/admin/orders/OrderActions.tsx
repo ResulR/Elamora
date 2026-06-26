@@ -1,4 +1,4 @@
-import type { ApiOrder } from "@/lib/orders-api";
+import type { ApiAdminOrder } from "@/lib/orders-api";
 import type { OrderStatus } from "@/types";
 import {
   formatOrderStatus,
@@ -33,7 +33,7 @@ export function OrderActions({
   onTrackingNumberChange,
   onMarkShipped,
 }: {
-  order: ApiOrder;
+  order: ApiAdminOrder;
   isUpdatingStatus: boolean;
   isUpdatingPayment: boolean;
   isSendingPaymentReminder: boolean;

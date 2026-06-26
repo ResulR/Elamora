@@ -8,7 +8,7 @@ import {
   getAdminOrdersPage,
   markAdminOrdersPaid,
   type AdminOrdersPagination,
-  type ApiOrder,
+  type ApiAdminOrder,
 } from "@/lib/orders-api";
 import { formatDate, formatPrice } from "@/lib/format";
 import { CheckCircle2, Download, Search, ShoppingBag } from "lucide-react";
@@ -56,7 +56,7 @@ function AdminOrdersPage() {
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
 
-  const [orders, setOrders] = useState<ApiOrder[]>([]);
+  const [orders, setOrders] = useState<ApiAdminOrder[]>([]);
   const [pagination, setPagination] = useState<AdminOrdersPagination>({
     page: 1,
     pageSize,
@@ -554,7 +554,7 @@ function OrderMobileCard({
   selected,
   onToggle,
 }: {
-  order: ApiOrder;
+  order: ApiAdminOrder;
   selected: boolean;
   onToggle: () => void;
 }) {
