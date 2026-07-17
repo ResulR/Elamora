@@ -1,0 +1,20 @@
+[Unit]
+Description=Send notification before a clean Elamora VPS shutdown
+DefaultDependencies=no
+After=network-online.target
+Before=shutdown.target reboot.target halt.target
+Conflicts=shutdown.target reboot.target halt.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/home/debian/apps/elamora
+EnvironmentFile=/home/debian/apps/elamora/server/.env
+Environment=BACKUP_REPORT_EMAIL=resulramadan@icloud.com
+ExecStart=/usr/bin/true
+ExecStop=/usr/bin/node /home/debian/apps/elamora/server/dist/scripts/send-backup-status-email.js shutdown
+RemainAfterExit=yes
+TimeoutStopSec=25
+
+[Install]
+WantedBy=multi-user.target

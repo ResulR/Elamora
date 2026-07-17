@@ -1,0 +1,12 @@
+[Unit]
+Description=Send weekly Elamora backup report
+After=network-online.target elamora-db-backup.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/home/debian/apps/elamora
+EnvironmentFile=/home/debian/apps/elamora/server/.env
+Environment=BACKUP_REPORT_EMAIL=resulramadan@icloud.com
+ExecStart=/usr/bin/node /home/debian/apps/elamora/server/dist/scripts/send-backup-status-email.js weekly

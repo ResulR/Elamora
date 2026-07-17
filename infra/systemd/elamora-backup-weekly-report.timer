@@ -1,0 +1,11 @@
+[Unit]
+Description=Send Elamora backup report every Monday
+
+[Timer]
+OnCalendar=Mon *-*-* 08:00:00 Europe/Belgrade
+Persistent=true
+RandomizedDelaySec=2m
+Unit=elamora-backup-weekly-report.service
+
+[Install]
+WantedBy=timers.target

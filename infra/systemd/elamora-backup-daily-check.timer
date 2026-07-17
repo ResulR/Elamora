@@ -1,0 +1,10 @@
+[Unit]
+Description=Check Elamora backup every day
+
+[Timer]
+OnCalendar=*-*-* 04:15:00 UTC
+Persistent=true
+Unit=elamora-backup-daily-check.service
+
+[Install]
+WantedBy=timers.target
