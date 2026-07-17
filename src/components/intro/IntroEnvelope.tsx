@@ -3,7 +3,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 
 const INTRO_KEY = 'elamora_intro_seen_rose_gold_v1'
 // Pink rose gold boutique intro video — blush envelope opening animation.
-const VIDEO_SRC = '/intro/rose-intro-elamora.mp4'
+const VIDEO_SRC = '/intro/rose-intro-elamora-mobile.mp4'
 
 // ─── Video timestamps in seconds ────────────────────────────────────────────
 const HOME_REVEAL_START_TIME = 4    // homepage commence à apparaître dans la zone enveloppe
@@ -45,12 +45,12 @@ export function IntroEnvelope({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const mobile = window.innerWidth < 768
     const homepage = window.location.pathname === '/'
-    const previewRequested =
+    const forceIntroRequested =
       new URLSearchParams(window.location.search).get('intro') === '1'
     let seen = false
     try { seen = !!localStorage.getItem(INTRO_KEY) } catch {}
     const needs =
-      homepage && previewRequested && mobile && !seen && !prefersReduced
+      homepage && mobile && (forceIntroRequested || !seen) && !prefersReduced
     setShowIntro(needs)
     setMounted(true)
     if (needs) document.body.style.overflow = 'hidden'
