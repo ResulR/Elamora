@@ -259,10 +259,14 @@ export function ShippingPicker({ value, onChange, onQuoteChange }: ShippingPicke
             />
 
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <label
+                htmlFor="country"
+                className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+              >
                 Country
               </label>
               <select
+                id="country"
                 name="country"
                 value={value.country}
                 onChange={(event) => onChange(updateField(value, "country", event.target.value))}
@@ -293,10 +297,14 @@ export function ShippingPicker({ value, onChange, onQuoteChange }: ShippingPicke
             />
 
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <label
+                htmlFor="deliveryTimeSlot"
+                className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+              >
                 Delivery time slot
               </label>
               <select
+                id="deliveryTimeSlot"
                 name="deliveryTimeSlot"
                 value={value.deliveryTimeSlot}
                 disabled={!availability?.available || availability.slots.length === 0 || isAvailabilityLoading}
@@ -319,10 +327,14 @@ export function ShippingPicker({ value, onChange, onQuoteChange }: ShippingPicke
             </p>
 
             <div className="sm:col-span-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <label
+                htmlFor="deliveryInstructions"
+                className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+              >
                 Delivery instructions — optional
               </label>
               <textarea
+                id="deliveryInstructions"
                 name="deliveryInstructions"
                 value={value.deliveryInstructions}
                 onChange={(event) =>
@@ -408,10 +420,14 @@ function Field({
 }) {
   return (
     <div className={className}>
-      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+      <label
+        htmlFor={name}
+        className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+      >
         {label}
       </label>
       <input
+        id={name}
         name={name}
         type={type}
         placeholder={placeholder}

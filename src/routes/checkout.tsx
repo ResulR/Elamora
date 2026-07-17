@@ -632,9 +632,18 @@ function Field({
 }) {
   return (
     <div>
-      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</label>
+      <label
+        htmlFor={name}
+        className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+      >
+        {label}
+      </label>
       <input
-        name={name} type={type} placeholder={placeholder} required={required}
+        id={name}
+        name={name}
+        type={type}
+        placeholder={placeholder}
+        required={required}
         className="mt-1 w-full rounded-lg border border-input bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
       />
     </div>
