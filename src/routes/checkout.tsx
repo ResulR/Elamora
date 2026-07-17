@@ -313,6 +313,8 @@ function CheckoutPage() {
                         <img
                           src={item.imageUrl}
                           alt={item.creationName}
+                          loading="lazy"
+                          decoding="async"
                           className="h-16 w-16 rounded-xl object-cover flex-shrink-0 shadow-soft"
                         />
                       )}
@@ -464,6 +466,8 @@ function CheckoutPage() {
                       <img
                         src={item.imageUrl}
                         alt={item.creationName}
+                        loading="lazy"
+                        decoding="async"
                         className="h-14 w-14 rounded-lg object-cover flex-shrink-0 shadow-soft"
                       />
                     )}

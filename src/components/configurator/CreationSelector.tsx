@@ -40,6 +40,7 @@ function Lightbox({
             alt={design.name}
             width={720}
             height={956}
+            loading="eager"
             decoding="async"
             className="w-full object-contain max-h-[62vh]"
           />

@@ -355,6 +355,8 @@ function AdminProductsPage() {
                   <img
                     src={imagePreviewUrl || form.imageUrl}
                     alt=""
+                    loading="lazy"
+                    decoding="async"
                     className="h-full w-full object-contain"
                   />
                 ) : (
@@ -528,7 +530,13 @@ function ProductIdentity({ product }: { product: AdminCatalogProductApi }) {
     <div className="flex items-center gap-3 min-w-0">
       <div className="h-12 w-12 rounded-xl border border-border/60 bg-muted/30 flex items-center justify-center overflow-hidden shrink-0">
         {product.imageUrl ? (
-          <img src={product.imageUrl} alt="" className="h-full w-full object-contain" />
+          <img
+            src={product.imageUrl}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-contain"
+          />
         ) : (
           <ImagePlus className="h-5 w-5 text-muted-foreground" />
         )}

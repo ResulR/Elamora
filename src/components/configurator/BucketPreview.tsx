@@ -15,6 +15,7 @@ export function BucketPreview() {
             alt={selectedDesign.name}
             className="w-full object-contain animate-in fade-in duration-400"
             loading="eager"
+            decoding="async"
           />
           <div className="px-4 py-3 border-t border-border/40 bg-surface/70 text-center">
             <p className="text-[11px] text-muted-foreground italic leading-relaxed">

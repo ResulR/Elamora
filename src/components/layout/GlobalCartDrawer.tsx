@@ -167,6 +167,8 @@ export function GlobalCartDrawer() {
                         <img
                           src={item.imageUrl}
                           alt={item.creationName}
+                          loading="lazy"
+                          decoding="async"
                           className="h-16 w-16 rounded-lg object-cover flex-shrink-0 shadow-soft"
                         />
                       )}
