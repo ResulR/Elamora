@@ -16,9 +16,7 @@ type Check = {
 const BACKUP_DIR = "/var/backups/elamora";
 const BACKUP_PATTERN =
   /^elamora_db-(\d{4})-(\d{2})-(\d{2})-(\d{6})\.dump$/;
-const RECIPIENT =
-  process.env.BACKUP_REPORT_EMAIL?.trim() ||
-  "resulramadan@icloud.com";
+const RECIPIENT = config.backupReportEmail;
 
 type CommandResult = {
   ok: boolean;

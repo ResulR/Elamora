@@ -7,6 +7,16 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
   CORS_ORIGIN: z.string().min(1).default("http://localhost:8080"),
+  PUBLIC_APP_URL: z.string().trim().url(),
+  BACKUP_REPORT_EMAIL: z.string().trim().email(),
+  DEFAULT_COUNTRY: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z]{2}$/, "DEFAULT_COUNTRY must contain exactly 2 letters")
+    .transform((value) => value.toUpperCase()),
+  PENDING_PAYMENT_REMINDERS_START_AT: z
+    .string()
+    .datetime({ offset: true }),
   COOKIE_SECURE: z
     .enum(["true", "false"])
     .default("false")
@@ -83,6 +93,11 @@ export const config = {
   jwtSecret: parsed.data.JWT_SECRET,
   corsOrigin: corsOrigins[0] ?? parsed.data.CORS_ORIGIN,
   corsOrigins,
+  publicAppUrl: parsed.data.PUBLIC_APP_URL.replace(/\/$/, ""),
+  backupReportEmail: parsed.data.BACKUP_REPORT_EMAIL,
+  defaultCountry: parsed.data.DEFAULT_COUNTRY,
+  pendingPaymentRemindersStartAt:
+    parsed.data.PENDING_PAYMENT_REMINDERS_START_AT,
   cookieSecure: parsed.data.COOKIE_SECURE,
   bankTransfer: {
     configured: invalidBankTransferConfigEntries.length === 0,

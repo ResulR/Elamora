@@ -34,7 +34,7 @@ const initialShipping: ShippingFormState = {
   addressLine2: "",
   postalCode: "",
   city: "",
-  country: "BE",
+  country: "XK",
   deliveryDate: "",
   deliveryTimeSlot: "",
   deliveryInstructions: "",

@@ -175,7 +175,14 @@ const createOrderSchema = z.object({
     addressLine2: z.string().trim().max(255).optional().default(""),
     postalCode: z.string().trim().max(20).optional().default(""),
     city: z.string().trim().max(120).optional().default(""),
-    country: z.string().trim().min(2).max(2).optional().default("BE").transform((value) => value.toUpperCase()),
+    country: z
+      .string()
+      .trim()
+      .min(2)
+      .max(2)
+      .optional()
+      .default(config.defaultCountry)
+      .transform((value) => value.toUpperCase()),
     deliveryDate: z.string().trim().max(20).optional().default(""),
     deliveryTimeSlot: z.string().trim().max(80).optional().default(""),
     deliveryInstructions: z.string().trim().max(1000).optional().default(""),
@@ -450,7 +457,14 @@ app.get("/api/shipping/quote", shippingLookupLimiter, async (req: Request, res: 
 
 const shippingAvailabilitySchema = z.object({
   date: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
-  country: z.string().trim().min(2).max(2).optional().default("BE").transform((value) => value.toUpperCase()),
+  country: z
+      .string()
+      .trim()
+      .min(2)
+      .max(2)
+      .optional()
+      .default(config.defaultCountry)
+      .transform((value) => value.toUpperCase()),
 });
 
 app.get("/api/shipping/availability", shippingLookupLimiter, async (req: Request, res: Response) => {
@@ -2854,7 +2868,7 @@ async function sendOrderAcknowledgmentEmailForOrder(orderId: string, confirmatio
       [order.id]
     );
 
-    const publicBaseUrl = config.corsOrigin.replace(/\/$/, "");
+    const publicBaseUrl = config.publicAppUrl;
     const confirmationUrl = `${publicBaseUrl}/confirmation?reference=${encodeURIComponent(order.reference)}&token=${encodeURIComponent(confirmationToken)}`;
 
     const result = await sendOrderAcknowledgmentEmail({
@@ -2963,7 +2977,7 @@ async function sendOrderRecapEmailForOrder(orderId: string, confirmationToken: s
       [order.id]
     );
 
-    const publicBaseUrl = config.corsOrigin.replace(/\/$/, "");
+    const publicBaseUrl = config.publicAppUrl;
     const confirmationUrl = `${publicBaseUrl}/confirmation?reference=${encodeURIComponent(order.reference)}&token=${encodeURIComponent(confirmationToken)}`;
 
     const result = await sendOrderAcknowledgmentEmail({
@@ -3069,7 +3083,7 @@ async function sendAdminNewOrderEmailForOrder(orderId: string) {
     );
 
     const mappedOrder = mapOrderRow(order);
-    const publicBaseUrl = config.corsOrigin.replace(/\/$/, "");
+    const publicBaseUrl = config.publicAppUrl;
     const adminOrderUrl = `${publicBaseUrl}/admin/orders/${encodeURIComponent(order.reference)}`;
 
     const result = await sendAdminNewOrderEmail({

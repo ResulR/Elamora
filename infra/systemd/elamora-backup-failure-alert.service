@@ -8,5 +8,4 @@ Type=oneshot
 User=root
 WorkingDirectory=/home/debian/apps/elamora
 EnvironmentFile=/home/debian/apps/elamora/server/.env
-Environment=BACKUP_REPORT_EMAIL=resulramadan@icloud.com
 ExecStart=/usr/bin/node /home/debian/apps/elamora/server/dist/scripts/send-backup-status-email.js failure

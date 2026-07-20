@@ -40,15 +40,6 @@ function loadEnvFileIfPresent(filePath: string) {
 loadEnvFileIfPresent(path.resolve(process.cwd(), ".env"));
 loadEnvFileIfPresent(path.resolve(process.cwd(), "server/.env"));
 
-// This admin-only reminder does not send bank details.
-// In production, config validation may still require BANK_*.
-// Provide non-placeholder process-local values only for this script when missing,
-// without modifying or printing .env values.
-process.env.BANK_BENEFICIARY ||= "Elamora";
-process.env.BANK_NAME ||= "Elamora bank";
-process.env.BANK_IBAN ||= "BANK-CONFIG-NOT-USED-BY-ADMIN-REMINDER";
-process.env.BANK_CURRENCY ||= "EUR";
-
 const [{ config }, { pool }, { sendAdminPendingPaymentReminderEmail }, { logger }] = await Promise.all([
   import("../config.js"),
   import("../db.js"),
@@ -110,10 +101,12 @@ async function main() {
       FROM orders
       WHERE status = 'pending_bank_transfer'
         AND payment_status = 'pending'
+        AND created_at >= $1::timestamptz
         AND created_at <= now() - interval '24 hours'
       ORDER BY created_at ASC
       LIMIT 50
-    `
+    `,
+    [config.pendingPaymentRemindersStartAt]
   );
 
   let sent = 0;
@@ -158,8 +151,7 @@ async function main() {
     }
 
     try {
-      const publicBaseUrl = config.corsOrigin.replace(/\/$/, "");
-      const adminOrderUrl = `${publicBaseUrl}/admin/orders/${encodeURIComponent(order.reference)}`;
+      const adminOrderUrl = `${config.publicAppUrl}/admin/orders/${encodeURIComponent(order.reference)}`;
 
       const result = await sendAdminPendingPaymentReminderEmail({
         to: adminEmail,

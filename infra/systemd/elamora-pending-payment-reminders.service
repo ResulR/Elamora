@@ -1,0 +1,12 @@
+[Unit]
+Description=Send Elamora pending bank transfer reminders to admin
+After=network-online.target postgresql.service
+Wants=network-online.target
+Requires=postgresql.service
+
+[Service]
+Type=oneshot
+User=debian
+WorkingDirectory=/home/debian/apps/elamora
+EnvironmentFile=/home/debian/apps/elamora/server/.env
+ExecStart=/usr/bin/node /home/debian/apps/elamora/server/dist/scripts/send-pending-payment-admin-reminders.js

@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Elamora pending payment admin reminders daily
+
+[Timer]
+OnCalendar=*-*-* 09:00:00 Europe/Belgrade
+Persistent=true
+Unit=elamora-pending-payment-reminders.service
+
+[Install]
+WantedBy=timers.target
