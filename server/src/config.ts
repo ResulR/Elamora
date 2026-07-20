@@ -3,12 +3,26 @@ import { z } from "zod";
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  LOG_LEVEL: z
+    .enum(["trace", "debug", "info", "warn", "error", "fatal", "silent"])
+    .default("info"),
   PORT: z.coerce.number().int().positive().default(4300),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
   CORS_ORIGIN: z.string().min(1).default("http://localhost:8080"),
   PUBLIC_APP_URL: z.string().trim().url(),
   BACKUP_REPORT_EMAIL: z.string().trim().email(),
+  BACKUP_DIR: z.string().trim().min(1),
+  BACKUP_DB_NAME: z.string().trim().min(1),
+  BACKUP_RETENTION_DAYS: z.coerce.number().int().positive(),
+  BACKUP_MAX_AGE_HOURS: z.coerce.number().positive(),
+  BACKUP_MIN_SIZE_BYTES: z.coerce.number().int().positive(),
+  BACKUP_DISK_WARNING_PERCENT: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(100),
+  BACKUP_MIN_ARCHIVE_ENTRIES: z.coerce.number().int().positive(),
   DEFAULT_COUNTRY: z
     .string()
     .trim()
@@ -88,6 +102,7 @@ if (parsed.data.NODE_ENV === "production" && invalidEmailConfigEntries.length > 
 
 export const config = {
   nodeEnv: parsed.data.NODE_ENV,
+  logLevel: parsed.data.LOG_LEVEL,
   port: parsed.data.PORT,
   databaseUrl: parsed.data.DATABASE_URL,
   jwtSecret: parsed.data.JWT_SECRET,
@@ -95,6 +110,15 @@ export const config = {
   corsOrigins,
   publicAppUrl: parsed.data.PUBLIC_APP_URL.replace(/\/$/, ""),
   backupReportEmail: parsed.data.BACKUP_REPORT_EMAIL,
+  backup: {
+    directory: parsed.data.BACKUP_DIR,
+    dbName: parsed.data.BACKUP_DB_NAME,
+    retentionDays: parsed.data.BACKUP_RETENTION_DAYS,
+    maxAgeHours: parsed.data.BACKUP_MAX_AGE_HOURS,
+    minSizeBytes: parsed.data.BACKUP_MIN_SIZE_BYTES,
+    diskWarningPercent: parsed.data.BACKUP_DISK_WARNING_PERCENT,
+    minArchiveEntries: parsed.data.BACKUP_MIN_ARCHIVE_ENTRIES,
+  },
   defaultCountry: parsed.data.DEFAULT_COUNTRY,
   pendingPaymentRemindersStartAt:
     parsed.data.PENDING_PAYMENT_REMINDERS_START_AT,

@@ -1,4 +1,5 @@
 import pino from "pino";
+import { config } from "./config.js";
 
 const REDACTED = "[REDACTED]";
 
@@ -34,10 +35,10 @@ const redactPaths = [
 ];
 
 export const logger = pino({
-  level: process.env.LOG_LEVEL || "info",
+  level: config.logLevel,
   base: {
     service: "elamora-api",
-    env: process.env.NODE_ENV || "development",
+    env: config.nodeEnv,
   },
   redact: {
     paths: redactPaths,

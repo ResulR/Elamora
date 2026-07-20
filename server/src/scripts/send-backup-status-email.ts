@@ -13,10 +13,15 @@ type Check = {
   evidence?: string[];
 };
 
-const BACKUP_DIR = "/var/backups/elamora";
-const BACKUP_PATTERN =
-  /^elamora_db-(\d{4})-(\d{2})-(\d{2})-(\d{6})\.dump$/;
+const BACKUP_DIR = config.backup.directory;
+const BACKUP_PATTERN = new RegExp(
+  `^${escapeRegExp(config.backup.dbName)}-(\\d{4})-(\\d{2})-(\\d{2})-(\\d{6})\\.dump$`,
+);
 const RECIPIENT = config.backupReportEmail;
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 type CommandResult = {
   ok: boolean;
@@ -281,7 +286,7 @@ function buildChecks(mode: Mode) {
 
     checks.push({
       label: "Sauvegarde récente",
-      ok: ageHours <= 36,
+      ok: ageHours <= config.backup.maxAgeHours,
       detail:
         `${ageHours.toFixed(1)} heure(s) — ` +
         `${formatDateTime(latest.modifiedAt)}`,
@@ -289,18 +294,18 @@ function buildChecks(mode: Mode) {
         `Fichier contrôlé : ${latest.path}`,
         `Date du fichier : ${latest.modifiedAt.toISOString()}`,
         `Âge calculé : ${ageHours.toFixed(2)} heure(s)`,
-        "Seuil configuré : 36 heures",
+        `Seuil configuré : ${config.backup.maxAgeHours} heures`,
       ],
     });
 
     checks.push({
       label: "Fichier non vide",
-      ok: latest.size >= 1024,
+      ok: latest.size >= config.backup.minSizeBytes,
       detail: formatSize(latest.size),
       evidence: [
         `Fichier contrôlé : ${latest.path}`,
         `Taille mesurée : ${latest.size} octets`,
-        "Taille minimale configurée : 1024 octets",
+        `Taille minimale configurée : ${config.backup.minSizeBytes} octets`,
       ],
     });
 
@@ -315,14 +320,14 @@ function buildChecks(mode: Mode) {
 
     checks.push({
       label: "Archive PostgreSQL lisible",
-      ok: archive.ok && archiveEntries > 10,
+      ok: archive.ok && archiveEntries >= config.backup.minArchiveEntries,
       detail: archive.ok
         ? `${archiveEntries} lignes vérifiées`
         : archive.output,
       evidence: [
         `Fichier contrôlé : ${latest.path}`,
         `Nombre de lignes retournées : ${archiveEntries}`,
-        "Minimum configuré : 11 lignes",
+        `Minimum configuré : ${config.backup.minArchiveEntries} lignes`,
         ...commandEvidence(archive),
       ],
     });
@@ -416,7 +421,7 @@ function buildChecks(mode: Mode) {
     label: "Espace disque suffisant",
     ok:
       disk.percentage !== null &&
-      disk.percentage < 85,
+      disk.percentage < config.backup.diskWarningPercent,
     detail:
       disk.percentage === null
         ? disk.raw
@@ -428,7 +433,7 @@ function buildChecks(mode: Mode) {
           ? "indisponible"
           : `${disk.percentage}%`
       }`,
-      "Seuil configuré : 85%",
+      `Seuil configuré : ${config.backup.diskWarningPercent}%`,
       `Résultat df : ${disk.raw || "indisponible"}`,
     ],
   });
@@ -438,7 +443,7 @@ function buildChecks(mode: Mode) {
       (Date.now() - backup.modifiedAt.getTime()) /
       (1000 * 60 * 60 * 24);
 
-    return ageDays > 15;
+    return ageDays > config.backup.retentionDays;
   });
 
   checks.push({

@@ -29,7 +29,7 @@ const dayLabels = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Frid
 
 const emptyZone: DeliveryZonePayload = {
   name: "",
-  countryCode: "BE",
+  countryCode: "XK",
   postalPattern: "",
   priceCents: 0,
   leadTimeDays: 0,
@@ -272,7 +272,7 @@ function AdminDeliveryPage() {
             <Section title="Blackout dates">
               <form onSubmit={submitBlackout} className="grid gap-3 lg:grid-cols-5">
                 <Field label="Date" type="date" value={blackoutForm.blackoutDate} onChange={(v) => setBlackoutForm((f) => ({ ...f, blackoutDate: v }))} required />
-                <Field label="Country optional" value={blackoutForm.countryCode} onChange={(v) => setBlackoutForm((f) => ({ ...f, countryCode: v }))} maxLength={2} placeholder="BE" />
+                <Field label="Country optional" value={blackoutForm.countryCode} onChange={(v) => setBlackoutForm((f) => ({ ...f, countryCode: v }))} maxLength={2} placeholder="XK" />
                 <Field label="Reason" value={blackoutForm.reason} onChange={(v) => setBlackoutForm((f) => ({ ...f, reason: v }))} />
                 <Toggle label="Active" checked={blackoutForm.isActive} onChange={(v) => setBlackoutForm((f) => ({ ...f, isActive: v }))} />
                 <div className="flex items-end gap-2">
@@ -329,7 +329,7 @@ function AdminDeliveryPage() {
                 <SelectDay value={slotForm.dayOfWeek} onChange={(v) => setSlotForm((f) => ({ ...f, dayOfWeek: v }))} />
                 <Field label="Start" type="time" value={slotForm.startTime} onChange={(v) => setSlotForm((f) => ({ ...f, startTime: v }))} required />
                 <Field label="End" type="time" value={slotForm.endTime} onChange={(v) => setSlotForm((f) => ({ ...f, endTime: v }))} required />
-                <Field label="Country optional" value={slotForm.countryCode} onChange={(v) => setSlotForm((f) => ({ ...f, countryCode: v }))} maxLength={2} placeholder="BE" />
+                <Field label="Country optional" value={slotForm.countryCode} onChange={(v) => setSlotForm((f) => ({ ...f, countryCode: v }))} maxLength={2} placeholder="XK" />
                 <Field label="Sort" type="number" value={String(slotForm.sortOrder)} onChange={(v) => setSlotForm((f) => ({ ...f, sortOrder: Number(v) || 0 }))} min={0} required />
                 <Toggle label="Active" checked={slotForm.isActive} onChange={(v) => setSlotForm((f) => ({ ...f, isActive: v }))} />
                 <div className="flex items-end gap-2">
