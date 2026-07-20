@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { readdirSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import { Resend } from "resend";
@@ -10,6 +10,7 @@ type Check = {
   label: string;
   ok: boolean;
   detail: string;
+  evidence?: string[];
 };
 
 const BACKUP_DIR = "/var/backups/elamora";
@@ -19,37 +20,110 @@ const RECIPIENT =
   process.env.BACKUP_REPORT_EMAIL?.trim() ||
   "resulramadan@icloud.com";
 
-function command(
+type CommandResult = {
+  ok: boolean;
+  executable: string;
+  args: string[];
+  commandLine: string;
+  exitCode: number | null;
+  signal: NodeJS.Signals | null;
+  stdout: string;
+  stderr: string;
+  output: string;
+  systemError: string | null;
+};
+
+function formatCommandLine(
   executable: string,
   args: string[],
 ): string {
-  return execFileSync(executable, args, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  }).trim();
+  return [executable, ...args]
+    .map((value) => JSON.stringify(value))
+    .join(" ");
 }
 
 function safeCommand(
   executable: string,
   args: string[],
-): {
-  ok: boolean;
-  output: string;
-} {
-  try {
-    return {
-      ok: true,
-      output: command(executable, args),
-    };
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : String(error);
+): CommandResult {
+  const result = spawnSync(executable, args, {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
 
-    return {
-      ok: false,
-      output: message,
-    };
+  const stdout =
+    typeof result.stdout === "string"
+      ? result.stdout.trim()
+      : "";
+
+  const stderr =
+    typeof result.stderr === "string"
+      ? result.stderr.trim()
+      : "";
+
+  const systemError = result.error
+    ? result.error.message
+    : null;
+
+  const output =
+    stderr ||
+    stdout ||
+    systemError ||
+    (result.signal
+      ? `Processus interrompu par le signal ${result.signal}`
+      : "");
+
+  return {
+    ok:
+      !result.error &&
+      result.status === 0 &&
+      result.signal === null,
+    executable,
+    args: [...args],
+    commandLine: formatCommandLine(
+      executable,
+      args,
+    ),
+    exitCode: result.status,
+    signal: result.signal,
+    stdout,
+    stderr,
+    output,
+    systemError,
+  };
+}
+
+function commandEvidence(
+  result: CommandResult,
+): string[] {
+  const evidence = [
+    `Commande : ${result.commandLine}`,
+    `Code de sortie : ${
+      result.exitCode === null
+        ? "indisponible"
+        : result.exitCode
+    }`,
+  ];
+
+  if (result.signal) {
+    evidence.push(`Signal : ${result.signal}`);
   }
+
+  if (result.stdout) {
+    evidence.push(`Sortie standard : ${result.stdout}`);
+  }
+
+  if (result.stderr) {
+    evidence.push(`Erreur standard : ${result.stderr}`);
+  }
+
+  if (result.systemError) {
+    evidence.push(
+      `Erreur système : ${result.systemError}`,
+    );
+  }
+
+  return evidence;
 }
 
 function utcDateKey(date: Date): string {
@@ -177,6 +251,10 @@ function buildChecks(mode: Mode) {
     detail:
       `enabled=${timerEnabled.output || "unknown"}, ` +
       `active=${timerActive.output || "unknown"}`,
+    evidence: [
+      ...commandEvidence(timerEnabled),
+      ...commandEvidence(timerActive),
+    ],
   });
 
   checks.push({
@@ -185,6 +263,17 @@ function buildChecks(mode: Mode) {
     detail: latest
       ? latest.path
       : "Aucun fichier de sauvegarde trouvé.",
+    evidence: latest
+      ? [
+          `Fichier détecté : ${latest.path}`,
+          `Date réelle : ${latest.modifiedAt.toISOString()}`,
+          `Taille réelle : ${latest.size} octets`,
+        ]
+      : [
+          `Dossier analysé : ${BACKUP_DIR}`,
+          `Format recherché : ${BACKUP_PATTERN.source}`,
+          `Nombre de fichiers correspondants : ${backups.length}`,
+        ],
   });
 
   if (latest) {
@@ -198,12 +287,23 @@ function buildChecks(mode: Mode) {
       detail:
         `${ageHours.toFixed(1)} heure(s) — ` +
         `${formatDateTime(latest.modifiedAt)}`,
+      evidence: [
+        `Fichier contrôlé : ${latest.path}`,
+        `Date du fichier : ${latest.modifiedAt.toISOString()}`,
+        `Âge calculé : ${ageHours.toFixed(2)} heure(s)`,
+        "Seuil configuré : 36 heures",
+      ],
     });
 
     checks.push({
       label: "Fichier non vide",
       ok: latest.size >= 1024,
       detail: formatSize(latest.size),
+      evidence: [
+        `Fichier contrôlé : ${latest.path}`,
+        `Taille mesurée : ${latest.size} octets`,
+        "Taille minimale configurée : 1024 octets",
+      ],
     });
 
     const archive = safeCommand("/usr/bin/pg_restore", [
@@ -221,14 +321,30 @@ function buildChecks(mode: Mode) {
       detail: archive.ok
         ? `${archiveEntries} lignes vérifiées`
         : archive.output,
+      evidence: [
+        `Fichier contrôlé : ${latest.path}`,
+        `Nombre de lignes retournées : ${archiveEntries}`,
+        "Minimum configuré : 11 lignes",
+        ...commandEvidence(archive),
+      ],
     });
   }
 
   if (mode === "weekly") {
-    const expectedDates = expectedDateKeys(7);
     const availableDates = new Set(
       backups.map((backup) => backup.dateKey),
     );
+
+    const oldestBackupDate =
+      backups.length > 0
+        ? backups[backups.length - 1]?.dateKey
+        : undefined;
+
+    const expectedDates = expectedDateKeys(7).filter(
+      (date) =>
+        !oldestBackupDate || date >= oldestBackupDate,
+    );
+
     const missingDates = expectedDates.filter(
       (date) => !availableDates.has(date),
     );
@@ -238,8 +354,22 @@ function buildChecks(mode: Mode) {
       ok: missingDates.length === 0,
       detail:
         missingDates.length === 0
-          ? "Les 7 derniers jours sont couverts."
+          ? expectedDates.length === 7
+            ? "Les 7 derniers jours sont couverts."
+            : `Tous les jours sont couverts depuis la mise en service (${oldestBackupDate}).`
           : `Jours manquants : ${missingDates.join(", ")}`,
+      evidence: [
+        `Dates attendues : ${expectedDates.join(", ")}`,
+        `Dates disponibles : ${[...availableDates].sort().join(", ")}`,
+        `Dates manquantes : ${
+          missingDates.length > 0
+            ? missingDates.join(", ")
+            : "aucune"
+        }`,
+        `Première sauvegarde disponible : ${
+          oldestBackupDate ?? "indisponible"
+        }`,
+      ],
     });
   }
 
@@ -268,7 +398,18 @@ function buildChecks(mode: Mode) {
   checks.push({
     label: "Dernière exécution terminée correctement",
     ok: serviceSuccess,
-    detail: serviceResult.output || "Résultat indisponible",
+    detail:
+      serviceValues.length >= 2
+        ? `Result=${serviceValues[0]}, ExecMainStatus=${serviceValues[1]}`
+        : serviceResult.output || "Résultat indisponible",
+    evidence: [
+      `Valeurs systemd reçues : ${
+        serviceValues.length > 0
+          ? serviceValues.join(", ")
+          : "aucune"
+      }`,
+      ...commandEvidence(serviceResult),
+    ],
   });
 
   const disk = getDiskUsage();
@@ -282,6 +423,16 @@ function buildChecks(mode: Mode) {
       disk.percentage === null
         ? disk.raw
         : `${disk.percentage}% utilisé`,
+    evidence: [
+      `Dossier contrôlé : ${BACKUP_DIR}`,
+      `Pourcentage mesuré : ${
+        disk.percentage === null
+          ? "indisponible"
+          : `${disk.percentage}%`
+      }`,
+      "Seuil configuré : 85%",
+      `Résultat df : ${disk.raw || "indisponible"}`,
+    ],
   });
 
   const expired = backups.filter((backup) => {
@@ -299,14 +450,31 @@ function buildChecks(mode: Mode) {
       expired.length === 0
         ? "Aucun ancien fichier expiré."
         : `${expired.length} ancien(s) fichier(s) trouvé(s).`,
+    evidence: [
+      "Seuil de contrôle configuré : plus de 15 jours",
+      `Nombre total de sauvegardes détectées : ${backups.length}`,
+      `Nombre de fichiers expirés détectés : ${expired.length}`,
+      `Fichiers expirés : ${
+        expired.length > 0
+          ? expired
+              .map((backup) => backup.path)
+              .join(", ")
+          : "aucun"
+      }`,
+    ],
   });
 
   if (mode === "failure") {
     checks.push({
-      label: "Échec signalé par systemd",
+      label: "Alerte d’échec reçue",
       ok: false,
       detail:
-        "Le service de sauvegarde s’est terminé en erreur.",
+        serviceResult.output ||
+        "Aucun résultat systemd disponible.",
+      evidence: [
+        "Mode d’exécution reçu : failure",
+        ...commandEvidence(serviceResult),
+      ],
     });
   }
 
@@ -323,62 +491,110 @@ function buildTechnicalReport(
   checks: Check[],
   backups: ReturnType<typeof getBackups>,
 ): string {
+  const failedChecks = checks.filter(
+    (check) => !check.ok,
+  );
+
+  const successfulChecks = checks.filter(
+    (check) => check.ok,
+  );
+
+  const latest = backups[0] ?? null;
+  const reportSuccess = failedChecks.length === 0;
+
+  const lines = [
+    "ELAMORA — ÉTAT DES SAUVEGARDES",
+    "================================",
+    "",
+    `Statut : ${reportSuccess ? "SUCCÈS" : "ÉCHEC"}`,
+    `Contrôle : ${mode}`,
+    `Généré le : ${formatDateTime(new Date())}`,
+    "",
+    "DERNIÈRE SAUVEGARDE",
+    "-------------------",
+    latest
+      ? `Fichier : ${latest.name}`
+      : "Fichier : aucun fichier détecté",
+    latest
+      ? `Date : ${formatDateTime(latest.modifiedAt)}`
+      : "Date : indisponible",
+    latest
+      ? `Taille : ${formatSize(latest.size)}`
+      : "Taille : indisponible",
+    "",
+  ];
+
+  if (reportSuccess) {
+    lines.push(
+      "CONTRÔLES",
+      "---------",
+      ...successfulChecks.map(
+        (check) =>
+          `[OK] ${check.label} — ${check.detail}`,
+      ),
+      "",
+      "ACTION",
+      "------",
+      "Aucune action nécessaire.",
+      "",
+    );
+
+    return lines.join("\n");
+  }
+
+  lines.push(
+    "PROBLÈMES DÉTECTÉS",
+    "------------------",
+  );
+
+  failedChecks.forEach((check, index) => {
+    lines.push(
+      "",
+      `${index + 1}. ${check.label}`,
+      `Résultat observé : ${check.detail}`,
+    );
+
+    if (check.evidence?.length) {
+      lines.push(
+        "Preuves observées :",
+        ...check.evidence.map(
+          (item) => `- ${item}`,
+        ),
+      );
+    }
+  });
+
   const journal = safeCommand(
     "/usr/bin/journalctl",
     [
       "-u",
       "elamora-db-backup.service",
-      "--since",
-      "8 days ago",
-      "--no-pager",
       "-n",
-      "250",
-    ],
-  );
-
-  const timers = safeCommand(
-    "/usr/bin/systemctl",
-    [
-      "list-timers",
-      "elamora-db-backup.timer",
-      "--all",
+      "40",
       "--no-pager",
+      "--output",
+      "short-iso",
     ],
   );
 
-  return [
-    "ELAMORA — RAPPORT TECHNIQUE DES SAUVEGARDES",
-    "================================================",
+  lines.push(
     "",
-    `Mode : ${mode}`,
-    `Généré le : ${new Date().toISOString()}`,
-    `Destinataire : ${RECIPIENT}`,
+    "JOURNAL RÉCENT DU SERVICE",
+    "-------------------------",
+    `Commande : ${journal.commandLine}`,
+    `Code de sortie : ${
+      journal.exitCode === null
+        ? "indisponible"
+        : journal.exitCode
+    }`,
+    journal.stdout ||
+      journal.stderr ||
+      journal.systemError ||
+      "Aucune ligne retournée.",
     "",
-    "VÉRIFICATIONS",
-    "-------------",
-    ...checks.map(
-      (check) =>
-        `[${check.ok ? "OK" : "ECHEC"}] ` +
-        `${check.label}: ${check.detail}`,
-    ),
-    "",
-    "FICHIERS DISPONIBLES",
-    "--------------------",
-    ...backups.map(
-      (backup) =>
-        `${backup.modifiedAt.toISOString()} | ` +
-        `${backup.size} octets | ${backup.path}`,
-    ),
-    "",
-    "TIMER SYSTEMD",
-    "-------------",
-    timers.output,
-    "",
-    "JOURNAL DU SERVICE",
-    "------------------",
-    journal.output,
-    "",
-  ].join("\n");
+  );
+
+  return lines.join("\n");
 }
 
 async function sendReport(
@@ -499,9 +715,15 @@ async function sendReport(
                 `
             }
 
-            <p style="margin:26px 0 0;font-size:13px;line-height:1.6;color:#74656e;">
-              Les détails techniques sont disponibles dans le fichier texte joint à cet email.
-            </p>
+            ${
+              success
+                ? ""
+                : `
+                  <p style="margin:26px 0 0;font-size:13px;line-height:1.6;color:#74656e;">
+                    Le diagnostic factuel est disponible dans le fichier texte joint.
+                  </p>
+                `
+            }
           </div>
         </div>
       </body>
@@ -528,7 +750,9 @@ async function sendReport(
       (check) => `- ${check.label}`,
     ),
     "",
-    "Les détails techniques sont joints dans un fichier texte.",
+    success
+      ? "Aucune pièce jointe : aucune anomalie détectée."
+      : "Le diagnostic factuel est joint dans un fichier texte.",
   ].join("\n");
 
   if (
@@ -559,18 +783,20 @@ async function sendReport(
     subject,
     html,
     text,
-    attachments: [
-      {
-        filename:
-          `elamora-backup-report-${new Date()
-            .toISOString()
-            .slice(0, 10)}.txt`,
-        content: Buffer.from(
-          technicalReport,
-          "utf8",
-        ),
-      },
-    ],
+    attachments: success
+      ? undefined
+      : [
+          {
+            filename:
+              `elamora-backup-report-${new Date()
+                .toISOString()
+                .slice(0, 10)}.txt`,
+            content: Buffer.from(
+              technicalReport,
+              "utf8",
+            ),
+          },
+        ],
   });
 
   if (result.error) {
