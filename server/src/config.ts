@@ -43,6 +43,15 @@ const envSchema = z.object({
   EMAIL_FROM: z.string().trim().min(1).optional(),
   EMAIL_REPLY_TO: z.string().trim().email().optional(),
   ADMIN_NOTIFICATION_EMAIL: z.string().trim().email().optional(),
+  INSTAGRAM_ACCESS_TOKEN: z.string().trim().min(1).optional(),
+  INSTAGRAM_TOKEN_ISSUED_AT: z
+    .string()
+    .datetime({ offset: true })
+    .optional(),
+  INSTAGRAM_TOKEN_EXPIRES_AT: z
+    .string()
+    .datetime({ offset: true })
+    .optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -136,5 +145,11 @@ export const config = {
     from: parsed.data.EMAIL_FROM ?? "",
     replyTo: parsed.data.EMAIL_REPLY_TO,
     adminNotificationEmail: parsed.data.ADMIN_NOTIFICATION_EMAIL ?? "",
+  },
+  instagram: {
+    configured: Boolean(parsed.data.INSTAGRAM_ACCESS_TOKEN),
+    accessToken: parsed.data.INSTAGRAM_ACCESS_TOKEN ?? "",
+    tokenIssuedAt: parsed.data.INSTAGRAM_TOKEN_ISSUED_AT,
+    tokenExpiresAt: parsed.data.INSTAGRAM_TOKEN_EXPIRES_AT,
   },
 };
