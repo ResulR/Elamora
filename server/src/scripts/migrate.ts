@@ -84,10 +84,14 @@ function removeOuterTransaction(sql: string) {
 async function main() {
   loadEnvironment();
 
-  const databaseUrl = process.env.DATABASE_URL?.trim();
+  const databaseUrl =
+    process.env.MIGRATION_DATABASE_URL?.trim() ||
+    process.env.DATABASE_URL?.trim();
 
   if (!databaseUrl) {
-    throw new Error("DATABASE_URL is required");
+    throw new Error(
+      "MIGRATION_DATABASE_URL or DATABASE_URL is required"
+    );
   }
 
   const migrationsDirectory = resolveMigrationsDirectory();
