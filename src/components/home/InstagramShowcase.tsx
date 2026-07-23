@@ -21,7 +21,7 @@ export function InstagramShowcase() {
   const [media, setMedia] = useState<PublicInstagramMedia[]>([]);
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const interactionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [isInteracting, setIsInteracting] = useState(false);
+  const isInteractingRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,21 +47,17 @@ export function InstagramShowcase() {
     }
 
     const interval = window.setInterval(() => {
-      if (isInteracting) {
+      if (isInteractingRef.current) {
         return;
       }
 
-      if (carouselApi.canScrollNext()) {
-        carouselApi.scrollNext();
-      } else {
-        carouselApi.scrollTo(0);
-      }
+      carouselApi.scrollNext();
     }, MAIN_AUTOPLAY_DELAY_MS);
 
     return () => {
       window.clearInterval(interval);
     };
-  }, [carouselApi, isInteracting, media.length]);
+  }, [carouselApi, media.length]);
 
   useEffect(() => {
     return () => {
@@ -72,14 +68,14 @@ export function InstagramShowcase() {
   }, []);
 
   const pauseAutoplayTemporarily = useCallback(() => {
-    setIsInteracting(true);
+    isInteractingRef.current = true;
 
     if (interactionTimeoutRef.current) {
       clearTimeout(interactionTimeoutRef.current);
     }
 
     interactionTimeoutRef.current = setTimeout(() => {
-      setIsInteracting(false);
+      isInteractingRef.current = false;
     }, MAIN_AUTOPLAY_DELAY_MS);
   }, []);
 
@@ -123,7 +119,7 @@ export function InstagramShowcase() {
           setApi={setCarouselApi}
           opts={{
             align: "start",
-            loop: false,
+            loop: true,
             slidesToScroll: 1,
           }}
           className="touch-pan-y px-1 md:px-12"
