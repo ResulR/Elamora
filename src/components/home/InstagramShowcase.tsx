@@ -122,14 +122,14 @@ export function InstagramShowcase() {
             loop: true,
             slidesToScroll: 1,
           }}
-          className="touch-pan-y px-1 md:px-12"
+          className="touch-pan-y px-0 sm:px-1 md:px-12"
           onPointerDown={pauseAutoplayTemporarily}
           onTouchStart={pauseAutoplayTemporarily}
           onKeyDown={pauseAutoplayTemporarily}
         >
           <CarouselContent className="-ml-4">
             {media.map((item) => (
-              <CarouselItem key={item.id} className="basis-[88%] pl-4 sm:basis-1/2 lg:basis-1/3">
+              <CarouselItem key={item.id} className="basis-full pl-4 sm:basis-1/2 lg:basis-1/3">
                 <InstagramCard item={item} />
               </CarouselItem>
             ))}
@@ -225,7 +225,7 @@ function InstagramMediaFrame({
   }, [item.mediaType, slides.length]);
 
   return (
-    <div className="relative aspect-[4/5] overflow-hidden bg-primary-soft/25">
+    <div className="relative aspect-square overflow-hidden bg-primary-soft/25 sm:aspect-[4/5]">
       <div
         className="flex h-full transition-transform duration-1000 ease-in-out"
         style={{
@@ -294,7 +294,7 @@ function MediaContent({
         playsInline
         preload="metadata"
         aria-label={title}
-        className="h-full w-full object-contain sm:object-cover"
+        className="h-full w-full object-cover object-center"
       />
     );
   }
@@ -308,7 +308,7 @@ function MediaContent({
         alt={title}
         loading={eager ? "eager" : "lazy"}
         decoding="async"
-        className="h-full w-full object-contain transition-transform duration-700 ease-out sm:object-cover sm:group-hover:scale-[1.04]"
+        className="h-full w-full object-cover object-center transition-transform duration-700 ease-out sm:group-hover:scale-[1.04]"
       />
     );
   }
