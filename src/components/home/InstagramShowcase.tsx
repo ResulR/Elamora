@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ExternalLink, ImageIcon, Images, Instagram, Play } from "lucide-react";
+import { ExternalLink, ImageIcon, Instagram } from "lucide-react";
 import {
   Carousel,
   type CarouselApi,
@@ -251,11 +251,6 @@ function InstagramMediaFrame({
 
       <div className="pointer-events-none absolute inset-0 z-20 bg-gradient-to-t from-foreground/30 via-transparent to-transparent" />
 
-      <span className="absolute left-4 top-4 z-30 inline-flex items-center gap-1.5 rounded-full bg-background/85 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] backdrop-blur-md">
-        <MediaIcon type={item.mediaType} />
-        {formatMediaType(item.mediaType)}
-      </span>
-
       {slides.length > 1 ? (
         <div className="absolute inset-x-0 bottom-4 z-30 flex justify-center gap-1.5">
           {slides.map((slide, index) => (
@@ -299,7 +294,7 @@ function MediaContent({
         playsInline
         preload="metadata"
         aria-label={title}
-        className="h-full w-full object-cover"
+        className="h-full w-full object-contain sm:object-cover"
       />
     );
   }
@@ -313,7 +308,7 @@ function MediaContent({
         alt={title}
         loading={eager ? "eager" : "lazy"}
         decoding="async"
-        className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+        className="h-full w-full object-contain transition-transform duration-700 ease-out sm:object-cover sm:group-hover:scale-[1.04]"
       />
     );
   }
@@ -351,18 +346,6 @@ function getMediaSlides(item: PublicInstagramMedia): PublicInstagramMediaChild[]
       sortOrder: 0,
     },
   ];
-}
-
-function MediaIcon({ type }: { type: PublicInstagramMedia["mediaType"] }) {
-  if (type === "VIDEO") {
-    return <Play className="h-3.5 w-3.5" />;
-  }
-
-  if (type === "CAROUSEL_ALBUM") {
-    return <Images className="h-3.5 w-3.5" />;
-  }
-
-  return <ImageIcon className="h-3.5 w-3.5" />;
 }
 
 function formatMediaType(type: PublicInstagramMedia["mediaType"]) {
