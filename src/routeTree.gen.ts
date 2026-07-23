@@ -25,6 +25,7 @@ import { Route as LegalCgvRouteImport } from './routes/legal.cgv'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminProfileRouteImport } from './routes/admin.profile'
 import { Route as AdminProductsRouteImport } from './routes/admin.products'
+import { Route as AdminInstagramRouteImport } from './routes/admin.instagram'
 import { Route as AdminDeliveryRouteImport } from './routes/admin.delivery'
 import { Route as AdminAuditLogRouteImport } from './routes/admin.audit-log'
 import { Route as AdminOrdersIndexRouteImport } from './routes/admin.orders.index'
@@ -110,6 +111,11 @@ const AdminProductsRoute = AdminProductsRouteImport.update({
   path: '/admin/products',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminInstagramRoute = AdminInstagramRouteImport.update({
+  id: '/admin/instagram',
+  path: '/admin/instagram',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminDeliveryRoute = AdminDeliveryRouteImport.update({
   id: '/admin/delivery',
   path: '/admin/delivery',
@@ -140,6 +146,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/delivery': typeof AdminDeliveryRoute
+  '/admin/instagram': typeof AdminInstagramRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/profile': typeof AdminProfileRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -162,6 +169,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/delivery': typeof AdminDeliveryRoute
+  '/admin/instagram': typeof AdminInstagramRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/profile': typeof AdminProfileRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/delivery': typeof AdminDeliveryRoute
+  '/admin/instagram': typeof AdminInstagramRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/profile': typeof AdminProfileRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -209,6 +218,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin/audit-log'
     | '/admin/delivery'
+    | '/admin/instagram'
     | '/admin/products'
     | '/admin/profile'
     | '/admin/settings'
@@ -231,6 +241,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin/audit-log'
     | '/admin/delivery'
+    | '/admin/instagram'
     | '/admin/products'
     | '/admin/profile'
     | '/admin/settings'
@@ -253,6 +264,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin/audit-log'
     | '/admin/delivery'
+    | '/admin/instagram'
     | '/admin/products'
     | '/admin/profile'
     | '/admin/settings'
@@ -276,6 +288,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   AdminAuditLogRoute: typeof AdminAuditLogRoute
   AdminDeliveryRoute: typeof AdminDeliveryRoute
+  AdminInstagramRoute: typeof AdminInstagramRoute
   AdminProductsRoute: typeof AdminProductsRoute
   AdminProfileRoute: typeof AdminProfileRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
@@ -404,6 +417,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminProductsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/instagram': {
+      id: '/admin/instagram'
+      path: '/admin/instagram'
+      fullPath: '/admin/instagram'
+      preLoaderRoute: typeof AdminInstagramRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/delivery': {
       id: '/admin/delivery'
       path: '/admin/delivery'
@@ -444,6 +464,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   AdminAuditLogRoute: AdminAuditLogRoute,
   AdminDeliveryRoute: AdminDeliveryRoute,
+  AdminInstagramRoute: AdminInstagramRoute,
   AdminProductsRoute: AdminProductsRoute,
   AdminProfileRoute: AdminProfileRoute,
   AdminSettingsRoute: AdminSettingsRoute,

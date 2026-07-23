@@ -12,19 +12,22 @@ import {
   ShoppingBag,
   UserRound,
   ClipboardList,
+  Instagram,
 } from "lucide-react";
 import { AdminSidebar } from "./AdminSidebar";
 import { getCurrentAdmin, logoutAdmin, type AdminSession } from "@/lib/admin-auth";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 const mobileItems: Array<{
-  to: "/admin" | "/admin/orders" | "/admin/products" | "/admin/delivery" | "/admin/settings" | "/admin/profile" | "/admin/audit-log";
+  to:
+    | "/admin"
+    | "/admin/orders"
+    | "/admin/products"
+    | "/admin/instagram"
+    | "/admin/delivery"
+    | "/admin/settings"
+    | "/admin/profile"
+    | "/admin/audit-log";
   label: string;
   icon: typeof LayoutDashboard;
   exact?: boolean;
@@ -32,6 +35,7 @@ const mobileItems: Array<{
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/admin/orders", label: "Orders", icon: ShoppingBag },
   { to: "/admin/products", label: "Products", icon: Package },
+  { to: "/admin/instagram", label: "Instagram", icon: Instagram },
   { to: "/admin/delivery", label: "Delivery", icon: Truck },
   { to: "/admin/settings", label: "Settings", icon: Settings },
   { to: "/admin/profile", label: "Profile", icon: UserRound },
@@ -107,7 +111,10 @@ export function AdminLayout({ children, title }: { children: ReactNode; title: s
               </button>
             </SheetTrigger>
 
-            <SheetContent side="left" className="w-[82vw] max-w-xs p-0 border-primary/15 bg-surface">
+            <SheetContent
+              side="left"
+              className="w-[82vw] max-w-xs p-0 border-primary/15 bg-surface"
+            >
               <SheetHeader className="sr-only">
                 <SheetTitle>Admin menu</SheetTitle>
               </SheetHeader>

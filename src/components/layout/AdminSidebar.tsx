@@ -1,10 +1,28 @@
-﻿import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, ShoppingBag, Package,
-  Truck, Settings, UserRound, ClipboardList, Flower2, LogOut } from "lucide-react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import {
+  LayoutDashboard,
+  ShoppingBag,
+  Package,
+  Truck,
+  Settings,
+  UserRound,
+  ClipboardList,
+  Flower2,
+  Instagram,
+  LogOut,
+} from "lucide-react";
 import { logoutAdmin } from "@/lib/admin-auth";
 
 const items: Array<{
-  to: "/admin" | "/admin/orders" | "/admin/products" | "/admin/delivery" | "/admin/settings" | "/admin/profile" | "/admin/audit-log";
+  to:
+    | "/admin"
+    | "/admin/orders"
+    | "/admin/products"
+    | "/admin/instagram"
+    | "/admin/delivery"
+    | "/admin/settings"
+    | "/admin/profile"
+    | "/admin/audit-log";
   label: string;
   icon: typeof LayoutDashboard;
   exact?: boolean;
@@ -12,6 +30,7 @@ const items: Array<{
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/admin/orders", label: "Orders", icon: ShoppingBag },
   { to: "/admin/products", label: "Products", icon: Package },
+  { to: "/admin/instagram", label: "Instagram", icon: Instagram },
   { to: "/admin/delivery", label: "Delivery", icon: Truck },
   { to: "/admin/settings", label: "Settings", icon: Settings },
   { to: "/admin/profile", label: "Profile", icon: UserRound },
@@ -35,7 +54,9 @@ export function AdminSidebar({ adminEmail }: { adminEmail: string }) {
         </span>
         <div>
           <span className="font-display text-lg leading-tight block">Elamora</span>
-          <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Admin</span>
+          <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            Admin
+          </span>
         </div>
       </div>
       <nav className="flex-1 p-4 space-y-1.5">
