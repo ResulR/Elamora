@@ -1420,6 +1420,49 @@ app.get(
   }
 );
 
+function mapPublicInstagramMediaRow(row: any) {
+  return {
+    id: String(row.id),
+    mediaType: String(row.media_type),
+    mediaUrl: row.media_url ?? "",
+    thumbnailUrl: row.thumbnail_url ?? "",
+    permalink: row.permalink ?? "",
+    caption: row.caption ?? "",
+    displayTitle: row.display_title ?? "",
+    displayDescription: row.display_description ?? "",
+    instagramTimestamp:
+      row.instagram_timestamp instanceof Date
+        ? row.instagram_timestamp.toISOString()
+        : String(row.instagram_timestamp),
+  };
+}
+
+app.get("/api/instagram-media", async (_req: Request, res: Response) => {
+  const result = await pool.query(`
+    SELECT
+      id,
+      media_type,
+      media_url,
+      thumbnail_url,
+      permalink,
+      caption,
+      display_title,
+      display_description,
+      instagram_timestamp
+    FROM instagram_media
+    WHERE status = 'published'
+    ORDER BY
+      sort_order ASC,
+      instagram_timestamp DESC
+    LIMIT 12
+  `);
+
+  return res.json({
+    ok: true,
+    media: result.rows.map(mapPublicInstagramMediaRow),
+  });
+});
+
 function mapInstagramMediaRow(row: any) {
   return {
     id: String(row.id),
