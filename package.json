@@ -16,7 +16,8 @@
     "api:email:test": "node server/dist/scripts/send-test-email.js",
     "api:dev": "tsx watch server/src/index.ts",
     "api:pending-payment-reminders": "node server/dist/scripts/send-pending-payment-admin-reminders.js",
-    "api:migrate": "node server/dist/scripts/migrate.js"
+    "api:migrate": "node server/dist/scripts/migrate.js",
+    "api:instagram:sync": "node server/dist/scripts/sync-instagram-media.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
