@@ -1421,6 +1421,10 @@ app.get(
 );
 
 function mapPublicInstagramMediaRow(row: any) {
+  const children = Array.isArray(row.children)
+    ? row.children
+    : [];
+
   return {
     id: String(row.id),
     mediaType: String(row.media_type),
@@ -1434,26 +1438,50 @@ function mapPublicInstagramMediaRow(row: any) {
       row.instagram_timestamp instanceof Date
         ? row.instagram_timestamp.toISOString()
         : String(row.instagram_timestamp),
+    children: children.map((child: any) => ({
+      id: String(child.id),
+      mediaType: String(child.mediaType),
+      mediaUrl: child.mediaUrl ?? "",
+      thumbnailUrl: child.thumbnailUrl ?? "",
+      sortOrder: Number(child.sortOrder ?? 0),
+    })),
   };
 }
 
 app.get("/api/instagram-media", async (_req: Request, res: Response) => {
   const result = await pool.query(`
     SELECT
-      id,
-      media_type,
-      media_url,
-      thumbnail_url,
-      permalink,
-      caption,
-      display_title,
-      display_description,
-      instagram_timestamp
-    FROM instagram_media
-    WHERE status = 'published'
+      media.id,
+      media.media_type,
+      media.media_url,
+      media.thumbnail_url,
+      media.permalink,
+      media.caption,
+      media.display_title,
+      media.display_description,
+      media.instagram_timestamp,
+      COALESCE(
+        (
+          SELECT json_agg(
+            json_build_object(
+              'id', child.id,
+              'mediaType', child.media_type,
+              'mediaUrl', child.media_url,
+              'thumbnailUrl', child.thumbnail_url,
+              'sortOrder', child.sort_order
+            )
+            ORDER BY child.sort_order ASC
+          )
+          FROM instagram_media_children AS child
+          WHERE child.parent_media_id = media.id
+        ),
+        '[]'::json
+      ) AS children
+    FROM instagram_media AS media
+    WHERE media.status = 'published'
     ORDER BY
-      sort_order ASC,
-      instagram_timestamp DESC
+      media.sort_order ASC,
+      media.instagram_timestamp DESC
     LIMIT 12
   `);
 

@@ -1,5 +1,13 @@
 export type PublicInstagramMediaType = "IMAGE" | "VIDEO" | "CAROUSEL_ALBUM";
 
+export type PublicInstagramMediaChild = {
+  id: string;
+  mediaType: Exclude<PublicInstagramMediaType, "CAROUSEL_ALBUM">;
+  mediaUrl: string;
+  thumbnailUrl: string;
+  sortOrder: number;
+};
+
 export type PublicInstagramMedia = {
   id: string;
   mediaType: PublicInstagramMediaType;
@@ -10,6 +18,7 @@ export type PublicInstagramMedia = {
   displayTitle: string;
   displayDescription: string;
   instagramTimestamp: string;
+  children: PublicInstagramMediaChild[];
 };
 
 type PublicInstagramResponse = {
