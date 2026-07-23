@@ -286,6 +286,16 @@ const deliveryTimeSlotPayloadSchema = z.object({
   sortOrder: z.number().int().min(0).max(9999),
 });
 
+const instagramMediaStatusSchema = z.enum([
+  "pending",
+  "published",
+  "ignored",
+]);
+
+const updateInstagramMediaStatusSchema = z.object({
+  status: instagramMediaStatusSchema,
+});
+
 
 function createConfirmationToken() {
   return crypto.randomBytes(32).toString("hex");
@@ -1406,6 +1416,215 @@ app.get(
         total,
         totalPages: Math.max(1, Math.ceil(total / pageSize)),
       },
+    });
+  }
+);
+
+function mapInstagramMediaRow(row: any) {
+  return {
+    id: String(row.id),
+    mediaType: String(row.media_type),
+    mediaUrl: row.media_url ?? "",
+    thumbnailUrl: row.thumbnail_url ?? "",
+    permalink: row.permalink ?? "",
+    caption: row.caption ?? "",
+    displayTitle: row.display_title ?? "",
+    displayDescription: row.display_description ?? "",
+    localFilePath: row.local_file_path ?? "",
+    status: row.status,
+    sortOrder: Number(row.sort_order ?? 0),
+    instagramTimestamp:
+      row.instagram_timestamp instanceof Date
+        ? row.instagram_timestamp.toISOString()
+        : String(row.instagram_timestamp),
+    importedAt:
+      row.imported_at instanceof Date
+        ? row.imported_at.toISOString()
+        : String(row.imported_at),
+    publishedAt: row.published_at
+      ? row.published_at instanceof Date
+        ? row.published_at.toISOString()
+        : String(row.published_at)
+      : null,
+    ignoredAt: row.ignored_at
+      ? row.ignored_at instanceof Date
+        ? row.ignored_at.toISOString()
+        : String(row.ignored_at)
+      : null,
+    updatedAt:
+      row.updated_at instanceof Date
+        ? row.updated_at.toISOString()
+        : String(row.updated_at),
+  };
+}
+
+app.get(
+  "/api/admin/instagram-media",
+  requireAdmin,
+  async (req: AdminRequest, res: Response) => {
+    const requestedStatus =
+      typeof req.query.status === "string"
+        ? req.query.status.trim()
+        : "";
+
+    if (
+      requestedStatus &&
+      requestedStatus !== "all" &&
+      !instagramMediaStatusSchema.safeParse(requestedStatus).success
+    ) {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid Instagram media status",
+      });
+    }
+
+    const values: unknown[] = [];
+    let whereSql = "";
+
+    if (requestedStatus && requestedStatus !== "all") {
+      values.push(requestedStatus);
+      whereSql = "WHERE status = $1";
+    }
+
+    const [mediaResult, countsResult] = await Promise.all([
+      pool.query(
+        `
+          SELECT *
+          FROM instagram_media
+          ${whereSql}
+          ORDER BY
+            CASE status
+              WHEN 'pending' THEN 0
+              WHEN 'published' THEN 1
+              WHEN 'ignored' THEN 2
+              ELSE 3
+            END,
+            sort_order ASC,
+            instagram_timestamp DESC
+        `,
+        values
+      ),
+      pool.query(
+        `
+          SELECT
+            COUNT(*)::int AS total,
+            COUNT(*) FILTER (
+              WHERE status = 'pending'
+            )::int AS pending,
+            COUNT(*) FILTER (
+              WHERE status = 'published'
+            )::int AS published,
+            COUNT(*) FILTER (
+              WHERE status = 'ignored'
+            )::int AS ignored
+          FROM instagram_media
+        `
+      ),
+    ]);
+
+    const counts = countsResult.rows[0] ?? {};
+
+    return res.json({
+      ok: true,
+      media: mediaResult.rows.map(mapInstagramMediaRow),
+      counts: {
+        total: Number(counts.total ?? 0),
+        pending: Number(counts.pending ?? 0),
+        published: Number(counts.published ?? 0),
+        ignored: Number(counts.ignored ?? 0),
+      },
+    });
+  }
+);
+
+app.patch(
+  "/api/admin/instagram-media/:id/status",
+  requireAdmin,
+  async (req: AdminRequest, res: Response) => {
+    const id = String(req.params.id ?? "").trim();
+
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        id
+      )
+    ) {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid Instagram media identifier",
+      });
+    }
+
+    const parsed =
+      updateInstagramMediaStatusSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      return res.status(400).json({
+        ok: false,
+        error:
+          parsed.error.issues[0]?.message ??
+          "Invalid Instagram media status",
+      });
+    }
+
+    const currentResult = await pool.query(
+      `
+        SELECT id, status, media_type
+        FROM instagram_media
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [id]
+    );
+
+    const current = currentResult.rows[0];
+
+    if (!current) {
+      return res.status(404).json({
+        ok: false,
+        error: "Instagram media not found",
+      });
+    }
+
+    const result = await pool.query(
+      `
+        UPDATE instagram_media
+        SET
+          status = $2,
+          published_at = CASE
+            WHEN $2 = 'published'
+              THEN COALESCE(published_at, now())
+            ELSE NULL
+          END,
+          ignored_at = CASE
+            WHEN $2 = 'ignored'
+              THEN COALESCE(ignored_at, now())
+            ELSE NULL
+          END,
+          updated_at = now()
+        WHERE id = $1
+        RETURNING *
+      `,
+      [id, parsed.data.status]
+    );
+
+    const media = mapInstagramMediaRow(
+      result.rows[0]
+    );
+
+    await logAdminAction(req, {
+      action: "instagram_media.status.update",
+      targetType: "instagram_media",
+      targetId: media.id,
+      payload: {
+        previousStatus: current.status,
+        newStatus: media.status,
+        mediaType: current.media_type,
+      },
+    });
+
+    return res.json({
+      ok: true,
+      media,
     });
   }
 );
