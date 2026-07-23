@@ -96,6 +96,9 @@ type ExistingMediaRow = {
 const MAX_PAGES = 100;
 const PAGE_LIMIT = 100;
 
+const applyAllExisting =
+  process.argv.includes("--apply-all-existing");
+
 const requestedFields = [
   "id",
   "media_type",
@@ -165,6 +168,20 @@ function readRequiredString(
   }
 
   return value.trim();
+}
+
+function readOptionalString(
+  value: unknown
+): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+
+  return trimmed.length > 0
+    ? trimmed
+    : null;
 }
 
 function readMediaType(
@@ -317,21 +334,17 @@ async function main() {
       id,
       mediaType,
       mediaProductType:
-        typeof media.media_product_type === "string"
-          ? media.media_product_type
-          : null,
-      hasMediaUrl:
-        typeof media.media_url === "string" &&
-        media.media_url.length > 0,
-      hasThumbnailUrl:
-        typeof media.thumbnail_url === "string" &&
-        media.thumbnail_url.length > 0,
-      hasPermalink:
-        typeof media.permalink === "string" &&
-        media.permalink.length > 0,
-      hasCaption:
-        typeof media.caption === "string" &&
-        media.caption.length > 0,
+        readOptionalString(
+          media.media_product_type
+        ),
+      mediaUrl:
+        readOptionalString(media.media_url),
+      thumbnailUrl:
+        readOptionalString(media.thumbnail_url),
+      permalink:
+        readOptionalString(media.permalink),
+      caption:
+        readOptionalString(media.caption),
       timestamp: parsedTimestamp,
       childCount: children.length,
     };
@@ -392,13 +405,76 @@ async function main() {
     )
   );
 
+  let insertedCount = 0;
+
+  if (applyAllExisting && newMedia.length > 0) {
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      for (const media of newMedia) {
+        const result = await client.query(
+          `
+            INSERT INTO instagram_media (
+              instagram_media_id,
+              media_type,
+              media_url,
+              thumbnail_url,
+              permalink,
+              caption,
+              instagram_timestamp,
+              status
+            )
+            VALUES (
+              $1,
+              $2,
+              $3,
+              $4,
+              $5,
+              $6,
+              $7,
+              'pending'
+            )
+            ON CONFLICT (instagram_media_id)
+            DO NOTHING
+          `,
+          [
+            media.id,
+            media.mediaType,
+            media.mediaUrl,
+            media.thumbnailUrl,
+            media.permalink,
+            media.caption,
+            media.timestamp,
+          ]
+        );
+
+        insertedCount += result.rowCount ?? 0;
+      }
+
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   const summary = {
     ok: true,
-    mode: "dry_run",
+    mode: applyAllExisting
+      ? "apply_all_existing"
+      : "dry_run",
     pagesChecked: fetched.pageCount,
     instagramMediaCount: normalized.length,
     existingDatabaseCount: existingIds.size,
     newMediaCount: newMedia.length,
+    insertedCount,
+    insertedStatus: applyAllExisting
+      ? "pending"
+      : null,
     countByType,
     newCountByType,
     carouselChildCount: normalized.reduce(
@@ -406,8 +482,9 @@ async function main() {
         total + media.childCount,
       0
     ),
-    databaseWrites: 0,
+    databaseWrites: insertedCount,
     mediaDownloads: 0,
+    automaticHomepagePublication: false,
     tokenDisplayed: false,
     mediaIdsDisplayed: false,
     urlsDisplayed: false,
@@ -415,7 +492,9 @@ async function main() {
   };
 
   logger.info({
-    event: "instagram_media_sync_dry_run_done",
+    event: applyAllExisting
+      ? "instagram_media_sync_import_done"
+      : "instagram_media_sync_dry_run_done",
     ...summary,
   });
 
@@ -437,7 +516,9 @@ main()
     console.error(
       JSON.stringify({
         ok: false,
-        mode: "dry_run",
+        mode: applyAllExisting
+          ? "apply_all_existing"
+          : "dry_run",
         error: message,
         databaseWrites: 0,
         mediaDownloads: 0,

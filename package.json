@@ -17,7 +17,8 @@
     "api:dev": "tsx watch server/src/index.ts",
     "api:pending-payment-reminders": "node server/dist/scripts/send-pending-payment-admin-reminders.js",
     "api:migrate": "node server/dist/scripts/migrate.js",
-    "api:instagram:sync": "node server/dist/scripts/sync-instagram-media.js"
+    "api:instagram:sync": "node server/dist/scripts/sync-instagram-media.js",
+    "api:instagram:import-all": "node server/dist/scripts/sync-instagram-media.js --apply-all-existing"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
