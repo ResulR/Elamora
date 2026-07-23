@@ -90,6 +90,7 @@ type InstagramMediaResponse = {
 };
 
 type ExistingMediaRow = {
+  id: string;
   instagram_media_id: string;
 };
 
@@ -328,7 +329,51 @@ async function main() {
       );
     }
 
-    const children = parseChildren(media);
+    const children = parseChildren(media).map(
+      (child, sortOrder) => {
+        const childId = readRequiredString(
+          child.id,
+          "children.id"
+        );
+
+        const childMediaType = readMediaType(
+          child.media_type
+        );
+
+        if (childMediaType === "CAROUSEL_ALBUM") {
+          throw new Error(
+            "Nested Instagram carousel children are unsupported"
+          );
+        }
+
+        const childTimestamp =
+          readOptionalString(child.timestamp);
+
+        const parsedChildTimestamp = childTimestamp
+          ? new Date(childTimestamp)
+          : null;
+
+        if (
+          parsedChildTimestamp &&
+          Number.isNaN(parsedChildTimestamp.getTime())
+        ) {
+          throw new Error(
+            "Instagram child timestamp is invalid"
+          );
+        }
+
+        return {
+          id: childId,
+          mediaType: childMediaType,
+          mediaUrl:
+            readOptionalString(child.media_url),
+          thumbnailUrl:
+            readOptionalString(child.thumbnail_url),
+          timestamp: parsedChildTimestamp,
+          sortOrder,
+        };
+      }
+    );
 
     return {
       id,
@@ -346,6 +391,7 @@ async function main() {
       caption:
         readOptionalString(media.caption),
       timestamp: parsedTimestamp,
+      children,
       childCount: children.length,
     };
   });
@@ -366,7 +412,7 @@ async function main() {
   const existingResult =
     await pool.query<ExistingMediaRow>(
       `
-        SELECT instagram_media_id
+        SELECT id, instagram_media_id
         FROM instagram_media
       `
     );
@@ -406,15 +452,19 @@ async function main() {
   );
 
   let insertedCount = 0;
+  let synchronizedParentCount = 0;
+  let synchronizedChildCount = 0;
 
-  if (applyAllExisting && newMedia.length > 0) {
+  if (applyAllExisting) {
     const client = await pool.connect();
 
     try {
       await client.query("BEGIN");
 
-      for (const media of newMedia) {
-        const result = await client.query(
+      for (const media of normalized) {
+        const result = await client.query<{
+          id: string;
+        }>(
           `
             INSERT INTO instagram_media (
               instagram_media_id,
@@ -437,7 +487,16 @@ async function main() {
               'pending'
             )
             ON CONFLICT (instagram_media_id)
-            DO NOTHING
+            DO UPDATE SET
+              media_type = EXCLUDED.media_type,
+              media_url = EXCLUDED.media_url,
+              thumbnail_url = EXCLUDED.thumbnail_url,
+              permalink = EXCLUDED.permalink,
+              caption = EXCLUDED.caption,
+              instagram_timestamp =
+                EXCLUDED.instagram_timestamp,
+              updated_at = now()
+            RETURNING id
           `,
           [
             media.id,
@@ -450,7 +509,63 @@ async function main() {
           ]
         );
 
-        insertedCount += result.rowCount ?? 0;
+        const parentId = result.rows[0]?.id;
+
+        if (!parentId) {
+          throw new Error(
+            "Instagram parent media upsert returned no identifier"
+          );
+        }
+
+        synchronizedParentCount += 1;
+
+        if (!existingIds.has(media.id)) {
+          insertedCount += 1;
+        }
+
+        await client.query(
+          `
+            DELETE FROM instagram_media_children
+            WHERE parent_media_id = $1
+          `,
+          [parentId]
+        );
+
+        for (const child of media.children) {
+          await client.query(
+            `
+              INSERT INTO instagram_media_children (
+                parent_media_id,
+                instagram_child_id,
+                media_type,
+                media_url,
+                thumbnail_url,
+                instagram_timestamp,
+                sort_order
+              )
+              VALUES (
+                $1,
+                $2,
+                $3,
+                $4,
+                $5,
+                $6,
+                $7
+              )
+            `,
+            [
+              parentId,
+              child.id,
+              child.mediaType,
+              child.mediaUrl,
+              child.thumbnailUrl,
+              child.timestamp,
+              child.sortOrder,
+            ]
+          );
+
+          synchronizedChildCount += 1;
+        }
       }
 
       await client.query("COMMIT");
@@ -472,8 +587,10 @@ async function main() {
     existingDatabaseCount: existingIds.size,
     newMediaCount: newMedia.length,
     insertedCount,
+    synchronizedParentCount,
+    synchronizedChildCount,
     insertedStatus: applyAllExisting
-      ? "pending"
+      ? "pending_for_new_media_only"
       : null,
     countByType,
     newCountByType,
@@ -482,7 +599,10 @@ async function main() {
         total + media.childCount,
       0
     ),
-    databaseWrites: insertedCount,
+    databaseWrites: applyAllExisting
+      ? synchronizedParentCount +
+        synchronizedChildCount
+      : 0,
     mediaDownloads: 0,
     automaticHomepagePublication: false,
     tokenDisplayed: false,
