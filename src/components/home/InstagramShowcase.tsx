@@ -126,12 +126,10 @@ export function InstagramShowcase() {
             loop: false,
             slidesToScroll: 1,
           }}
-          className="px-1 md:px-12"
+          className="touch-pan-y px-1 md:px-12"
           onPointerDown={pauseAutoplayTemporarily}
           onTouchStart={pauseAutoplayTemporarily}
           onKeyDown={pauseAutoplayTemporarily}
-          onMouseEnter={() => setIsInteracting(true)}
-          onMouseLeave={() => setIsInteracting(false)}
         >
           <CarouselContent className="-ml-4">
             {media.map((item) => (
@@ -144,11 +142,11 @@ export function InstagramShowcase() {
           {media.length > 1 ? (
             <>
               <CarouselPrevious
-                onClick={pauseAutoplayTemporarily}
+                onPointerDown={pauseAutoplayTemporarily}
                 className="left-0 hidden border-primary/20 bg-background/90 md:inline-flex"
               />
               <CarouselNext
-                onClick={pauseAutoplayTemporarily}
+                onPointerDown={pauseAutoplayTemporarily}
                 className="right-0 hidden border-primary/20 bg-background/90 md:inline-flex"
               />
             </>
@@ -230,28 +228,40 @@ function InstagramMediaFrame({
     };
   }, [item.mediaType, slides.length]);
 
-  const activeSlide = slides[activeIndex];
-
   return (
     <div className="relative aspect-[4/5] overflow-hidden bg-primary-soft/25">
-      <MediaContent
-        mediaType={
-          activeSlide?.mediaType || (item.mediaType === "CAROUSEL_ALBUM" ? "IMAGE" : item.mediaType)
-        }
-        mediaUrl={activeSlide?.mediaUrl || item.mediaUrl}
-        thumbnailUrl={activeSlide?.thumbnailUrl || item.thumbnailUrl}
-        title={title}
-      />
+      <div
+        className="flex h-full transition-transform duration-1000 ease-in-out"
+        style={{
+          transform: `translateX(-${activeIndex * 100}%)`,
+        }}
+      >
+        {slides.map((slide, index) => (
+          <div
+            key={slide.id}
+            aria-hidden={activeIndex !== index}
+            className="h-full min-w-full shrink-0"
+          >
+            <MediaContent
+              mediaType={slide.mediaType}
+              mediaUrl={slide.mediaUrl}
+              thumbnailUrl={slide.thumbnailUrl}
+              title={title}
+              eager={index === 0}
+            />
+          </div>
+        ))}
+      </div>
 
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-foreground/30 via-transparent to-transparent" />
+      <div className="pointer-events-none absolute inset-0 z-20 bg-gradient-to-t from-foreground/30 via-transparent to-transparent" />
 
-      <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-background/85 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] backdrop-blur-md">
+      <span className="absolute left-4 top-4 z-30 inline-flex items-center gap-1.5 rounded-full bg-background/85 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] backdrop-blur-md">
         <MediaIcon type={item.mediaType} />
         {formatMediaType(item.mediaType)}
       </span>
 
       {slides.length > 1 ? (
-        <div className="absolute inset-x-0 bottom-4 flex justify-center gap-1.5">
+        <div className="absolute inset-x-0 bottom-4 z-30 flex justify-center gap-1.5">
           {slides.map((slide, index) => (
             <button
               key={slide.id}
@@ -274,11 +284,13 @@ function MediaContent({
   mediaUrl,
   thumbnailUrl,
   title,
+  eager = false,
 }: {
   mediaType: "IMAGE" | "VIDEO";
   mediaUrl: string;
   thumbnailUrl: string;
   title: string;
+  eager?: boolean;
 }) {
   if (mediaType === "VIDEO" && mediaUrl) {
     return (
@@ -303,7 +315,7 @@ function MediaContent({
       <img
         src={imageUrl}
         alt={title}
-        loading="lazy"
+        loading={eager ? "eager" : "lazy"}
         decoding="async"
         className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
       />
